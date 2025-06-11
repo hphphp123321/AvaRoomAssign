@@ -1,0 +1,953 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AvaRoomAssign.ViewModels"
+        xmlns:models="using:AvaRoomAssign.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="950"
+        x:Class="AvaRoomAssign.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/house.ico"
+        Title="抢房好好好 - Avalonia版 Ver 1.0.6 By: hp"
+        Width="950" Height="950"
+        WindowStartupLocation="CenterScreen"
+        CanResize="true">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <models:BoolToInverseBoolConverter x:Key="BoolToInverseConverter"/>
+        <models:IntToBoolConverter x:Key="IntToBoolConverter"/>
+        
+        <!-- 主题资源 - 更加生动的配色 -->
+        <SolidColorBrush x:Key="ThemeBackground" Color="#F8F9FA"/>
+        <SolidColorBrush x:Key="ThemeCardBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ThemeTextPrimary" Color="#212529"/>
+        <SolidColorBrush x:Key="ThemeTextSecondary" Color="#6C757D"/>
+        <SolidColorBrush x:Key="ThemeBorder" Color="#DEE2E6"/>
+        <SolidColorBrush x:Key="ThemeAccent" Color="#0D6EFD"/>
+        <SolidColorBrush x:Key="ThemeAccentHover" Color="#0B5ED7"/>
+        <SolidColorBrush x:Key="ThemeSuccess" Color="#198754"/>
+        <SolidColorBrush x:Key="ThemeWarning" Color="#FFC107"/>
+        <SolidColorBrush x:Key="ThemeDanger" Color="#DC3545"/>
+        <SolidColorBrush x:Key="ThemeLogBackground" Color="#F8F9FA"/>
+        <SolidColorBrush x:Key="ThemeLogText" Color="#198754"/>
+        <!-- 表格相关颜色 -->
+        <SolidColorBrush x:Key="ThemeTableAlternating" Color="#F8F9FA"/>
+        <SolidColorBrush x:Key="ThemeTableHover" Color="#E3F2FD"/>
+        <SolidColorBrush x:Key="ThemeTableSelected" Color="#BBDEFB"/>
+        
+        <!-- 深色主题资源 - 更加生动的配色 -->
+        <SolidColorBrush x:Key="DarkThemeBackground" Color="#0D1117"/>
+        <SolidColorBrush x:Key="DarkThemeCardBackground" Color="#161B22"/>
+        <SolidColorBrush x:Key="DarkThemeTextPrimary" Color="#F0F6FC"/>
+        <SolidColorBrush x:Key="DarkThemeTextSecondary" Color="#8B949E"/>
+        <SolidColorBrush x:Key="DarkThemeBorder" Color="#30363D"/>
+        <SolidColorBrush x:Key="DarkThemeAccent" Color="#58A6FF"/>
+        <SolidColorBrush x:Key="DarkThemeAccentHover" Color="#79C0FF"/>
+        <SolidColorBrush x:Key="DarkThemeSuccess" Color="#3FB950"/>
+        <SolidColorBrush x:Key="DarkThemeWarning" Color="#D29922"/>
+        <SolidColorBrush x:Key="DarkThemeDanger" Color="#F85149"/>
+        <SolidColorBrush x:Key="DarkThemeLogBackground" Color="#0D1117"/>
+        <SolidColorBrush x:Key="DarkThemeLogText" Color="#7EE787"/>
+        <!-- 深色主题表格相关颜色 -->
+        <SolidColorBrush x:Key="DarkThemeTableAlternating" Color="#21262D"/>
+        <SolidColorBrush x:Key="DarkThemeTableHover" Color="#30363D"/>
+        <SolidColorBrush x:Key="DarkThemeTableSelected" Color="#1F6FEB"/>
+    </Window.Resources>
+
+    <Window.Styles>
+        <!-- 卡片样式 -->
+        <Style Selector="Border.modern-card">
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#10000000" OffsetX="0" OffsetY="4" BlurRadius="20"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 可折叠卡片样式 -->
+        <Style Selector="Border.collapsible-card">
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#08000000" OffsetX="0" OffsetY="2" BlurRadius="12"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 折叠面板头部样式 -->
+        <Style Selector="Button.collapse-header">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="CornerRadius" Value="16,16,0,0"/>
+            <Setter Property="Padding" Value="24,20"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style Selector="Button.collapse-header:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableHover}"/>
+        </Style>
+
+        <Style Selector="Button.collapse-header:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+        </Style>
+
+        <!-- 主要按钮样式 - 更炫酷的渐变色效果 -->
+        <Style Selector="Button.modern-primary">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#667EEA" Offset="0"/>
+                        <GradientStop Color="#764BA2" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20,14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40667EEA" OffsetX="0" OffsetY="4" BlurRadius="12"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#5A6FD8" Offset="0"/>
+                        <GradientStop Color="#6A4C93" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#60667EEA" OffsetX="0" OffsetY="6" BlurRadius="16"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-primary:pressed /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#4A5BC6" Offset="0"/>
+                        <GradientStop Color="#5A3E81" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#80667EEA" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-primary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+        </Style>
+
+        <!-- 次要按钮样式 -->
+        <Style Selector="Button.modern-secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20,14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <Style Selector="Button.modern-secondary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#400D6EFD" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 危险按钮样式 -->
+        <Style Selector="Button.modern-danger">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Color="#FF6B6B" Offset="0"/>
+                        <GradientStop Color="#EE5A52" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40FF6B6B" OffsetX="0" OffsetY="2" BlurRadius="6"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Color="#FF5252" Offset="0"/>
+                        <GradientStop Color="#E53E3E" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-danger:pointerover">
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#60FF6B6B" OffsetX="0" OffsetY="4" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.modern-danger:pressed">
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#80FF6B6B" OffsetX="0" OffsetY="1" BlurRadius="4"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 主题切换按钮 -->
+        <Style Selector="Button.theme-toggle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+        </Style>
+
+        <Style Selector="Button.theme-toggle:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#20000000" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 输入框样式 -->
+        <Style Selector="TextBox.modern">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+        </Style>
+
+        <Style Selector="TextBox.modern:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#400D6EFD" OffsetX="0" OffsetY="0" BlurRadius="12"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox样式 -->
+        <Style Selector="ComboBox.modern">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+        </Style>
+
+        <!-- 标签样式 -->
+        <Style Selector="TextBlock.modern-label">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- 标题样式 -->
+        <Style Selector="TextBlock.modern-title">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+        </Style>
+
+        <!-- 副标题样式 -->
+        <Style Selector="TextBlock.modern-subtitle">
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+        </Style>
+
+        <!-- 日志文本框样式 -->
+        <Style Selector="TextBox.modern-log">
+            <Setter Property="Background" Value="{DynamicResource ThemeLogBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeLogText}"/>
+            <Setter Property="FontFamily" Value="Consolas, 'SF Mono', 'Monaco', 'Menlo', monospace"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeSuccess}"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#20198754" OffsetX="0" OffsetY="0" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- DataGrid样式 - 现代化设计 -->
+        <Style Selector="DataGrid.modern">
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="CanUserReorderColumns" Value="False"/>
+            <Setter Property="CanUserSortColumns" Value="True"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <!-- DataGrid Header样式 -->
+        <Style Selector="DataGrid.modern DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableAlternating}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+        <!-- 第一个表头的圆角 -->
+        <Style Selector="DataGrid.modern DataGridColumnHeader:nth-child(1)">
+            <Setter Property="CornerRadius" Value="12,0,0,0"/>
+        </Style>
+
+        <!-- 最后一个表头的圆角 -->
+        <Style Selector="DataGrid.modern DataGridColumnHeader:last-child">
+            <Setter Property="CornerRadius" Value="0,12,0,0"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- DataGrid Row样式 -->
+        <Style Selector="DataGrid.modern DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="MinHeight" Value="48"/>
+        </Style>
+
+        <!-- DataGrid 交替行背景 - 简化实现 -->
+        <Style Selector="DataGrid.modern DataGridRow:nth-child(even)">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableAlternating}"/>
+        </Style>
+
+        <!-- DataGrid 悬停效果 -->
+        <Style Selector="DataGrid.modern DataGridRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableHover}"/>
+        </Style>
+
+        <!-- DataGrid 选中效果 -->
+        <Style Selector="DataGrid.modern DataGridRow:selected">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+        </Style>
+
+        <!-- DataGrid 选中且悬停 -->
+        <Style Selector="DataGrid.modern DataGridRow:selected:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+        </Style>
+
+        <!-- DataGrid Cell样式 -->
+        <Style Selector="DataGrid.modern DataGridCell">
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 信息图标样式 - 更炫酷的颜色 -->
+        <Style Selector="Border.info-icon">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#4FACFE" Offset="0"/>
+                        <GradientStop Color="#00F2FE" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#404FACFE" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.warning-icon">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#FFB347" Offset="0"/>
+                        <GradientStop Color="#FFCC02" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40FFB347" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.success-icon">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#56FFA4" Offset="0"/>
+                        <GradientStop Color="#59BC86" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#4056FFA4" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.danger-icon">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#FF6B6B" Offset="0"/>
+                        <GradientStop Color="#FF8E88" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40FF6B6B" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- CheckBox样式 -->
+        <Style Selector="CheckBox.modern">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+
+        <!-- DatePicker样式 -->
+        <Style Selector="CalendarDatePicker.modern">
+            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource ThemeBackground}" x:Name="MainGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 顶部标题栏和主题切换 - 增加渐变背景 -->
+        <Border Grid.Row="0" 
+                BorderBrush="{DynamicResource ThemeBorder}" 
+                BorderThickness="0,0,0,1"
+                Padding="24,24"
+                x:Name="HeaderBorder">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#FFFFFF" Offset="0"/>
+                    <GradientStop Color="#F8F9FA" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Classes="modern-title" Text="🏠"/>
+                        <TextBlock Classes="modern-title" Text="抢房好好好"/>
+                        <Border Classes="success-icon"
+                                Width="32" Height="32"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="⚡"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontSize="16"
+                                       Foreground="White"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Classes="modern-subtitle" Text="Avalonia版 Ver 1.0.6 By: hp - 现代化界面设计"/>
+                </StackPanel>
+
+                <Button Grid.Column="1" 
+                        Classes="theme-toggle"
+                        Content="🌙"
+                        ToolTip.Tip="切换主题"
+                        Click="OnThemeToggleClick"
+                        x:Name="ThemeToggleButton"/>
+            </Grid>
+        </Border>
+
+        <!-- 可滚动的配置区域 -->
+        <ScrollViewer Grid.Row="1" 
+                      VerticalScrollBarVisibility="Auto" 
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="24,20,24,0"
+                      x:Name="ConfigScrollViewer">
+            <StackPanel Spacing="0">
+
+                <!-- 运行模式配置 - 可折叠 -->
+                <Border Classes="collapsible-card">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <Button Grid.Row="0" 
+                                Classes="collapse-header"
+                                Click="OnOperationModeToggle"
+                                x:Name="OperationModeToggle">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBlock Text="🚀" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="运行模式配置" VerticalAlignment="Center"/>
+                                <TextBlock Text="▼" 
+                                           x:Name="OperationModeIcon"
+                                           FontSize="14" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <StackPanel Grid.Row="1" 
+                                    x:Name="OperationModeContent"
+                                    Spacing="20" 
+                                    Margin="24,0,24,24">
+                            <StackPanel Orientation="Horizontal" Spacing="24">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="modern-label" Text="运行模式"/>
+                                    <ComboBox Classes="modern"
+                                              Width="240" 
+                                              SelectedIndex="{Binding SelectedOperationMode}"
+                                              ItemsSource="{Binding OperationModes}"
+                                              ToolTip.Tip="模拟点击模式可以看到具体的操作，在最后一步确认需要手动点击，成功率较高，但是速度较发包模式慢；发包模式理论速度最快，但是需要cookie，并且不保证成功率"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="modern-label" Text="浏览器类型"/>
+                                    <ComboBox Classes="modern"
+                                              Width="180" 
+                                              SelectedIndex="{Binding SelectedBrowserType}"
+                                              ItemsSource="{Binding BrowserTypes}"
+                                              IsEnabled="{Binding SelectedOperationMode, Converter={StaticResource IntToBoolConverter}}"/>
+                                </StackPanel>
+
+                                <Border Classes="info-icon"
+                                        Width="40" Height="40" 
+                                        VerticalAlignment="Bottom"
+                                        Margin="12,0,0,0"
+                                        ToolTip.Tip="模拟点击模式可以看到具体的操作，在最后一步确认需要手动点击，成功率较高，但是速度较发包模式慢；发包模式理论速度最快，但是需要cookie，并且不保证成功率">
+                                    <TextBlock Text="?"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontWeight="Bold"
+                                               FontSize="20"
+                                               Foreground="White"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 账户信息配置 - 可折叠 -->
+                <Border Classes="collapsible-card">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <Button Grid.Row="0" 
+                                Classes="collapse-header"
+                                Click="OnAccountToggle"
+                                x:Name="AccountToggle">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBlock Text="👤" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="账户信息配置" VerticalAlignment="Center"/>
+                                <TextBlock Text="▶" 
+                                           x:Name="AccountIcon"
+                                           FontSize="14" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <StackPanel Grid.Row="1" 
+                                    x:Name="AccountContent"
+                                    Spacing="20" 
+                                    Margin="24,0,24,24"
+                                    IsVisible="False">
+                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="160,*,Auto">
+                                <!-- 用户账号 -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="用户账号"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" 
+                                         Classes="modern"
+                                         Text="{Binding UserAccount}"
+                                         IsEnabled="{Binding SelectedOperationMode, Converter={StaticResource IntToBoolConverter}}"
+                                         Watermark="请输入用户账号"
+                                         Margin="0,0,24,16"/>
+
+                                <!-- 用户密码 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="用户密码"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" 
+                                         Classes="modern"
+                                         Text="{Binding UserPassword}"
+                                         IsEnabled="{Binding SelectedOperationMode, Converter={StaticResource IntToBoolConverter}}"
+                                         PasswordChar="●"
+                                         Watermark="请输入用户密码"
+                                         Margin="0,0,24,16"/>
+
+                                <!-- Cookie -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="Cookie"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" 
+                                         Classes="modern"
+                                         Text="{Binding Cookie}"
+                                         Watermark="请输入Cookie(Http发包模式必填)"
+                                         Margin="0,0,24,16"/>
+                                <Border Grid.Row="2" Grid.Column="2" 
+                                        Classes="warning-icon"
+                                        Width="36" Height="36" 
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="如果填写了cookie不用填账号密码，获取方式：登陆一次后在浏览器设置里cookie查找ent.qpgzf.cn的cookie">
+                                    <TextBlock Text="?"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontWeight="Bold"
+                                               FontSize="18"
+                                               Foreground="White"/>
+                                </Border>
+
+                                <!-- 申请人姓名 -->
+                                <TextBlock Grid.Row="3" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="申请人姓名"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <TextBox Grid.Row="3" Grid.Column="1" 
+                                         Classes="modern"
+                                         Text="{Binding ApplierName}"
+                                         Watermark="请输入申请人姓名"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 执行参数配置 - 可折叠 -->
+                <Border Classes="collapsible-card">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <Button Grid.Row="0" 
+                                Classes="collapse-header"
+                                Click="OnExecutionToggle"
+                                x:Name="ExecutionToggle">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBlock Text="⏰" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="执行参数配置" VerticalAlignment="Center"/>
+                                <TextBlock Text="▶" 
+                                           x:Name="ExecutionIcon"
+                                           FontSize="14" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <StackPanel Grid.Row="1" 
+                                    x:Name="ExecutionContent"
+                                    Spacing="20" 
+                                    Margin="24,0,24,24"
+                                    IsVisible="False">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="160,*">
+                                <!-- 开始时间 -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="开始时间"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <StackPanel Grid.Row="0" Grid.Column="1" 
+                                            Orientation="Horizontal" 
+                                            Spacing="16"
+                                            Margin="0,0,0,16">
+                                    <CalendarDatePicker Classes="modern" SelectedDate="{Binding StartDate}" Width="180"/>
+                                    <TextBox Classes="modern" Text="{Binding StartHour}" Width="70" Watermark="时"/>
+                                    <TextBlock Text=":" VerticalAlignment="Center" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                    <TextBox Classes="modern" Text="{Binding StartMinute}" Width="70" Watermark="分"/>
+                                    <TextBlock Text=":" VerticalAlignment="Center" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                    <TextBox Classes="modern" Text="{Binding StartSecond}" Width="70" Watermark="秒"/>
+                                </StackPanel>
+
+                                <!-- 触发间隔 -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="触发间隔(ms)"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" 
+                                         Classes="modern"
+                                         Text="{Binding ClickInterval}" 
+                                         Width="160"
+                                         HorizontalAlignment="Left"
+                                         Margin="0,0,0,16"/>
+
+                                <!-- 自动确认 -->
+                                <TextBlock Grid.Row="2" Grid.Column="0" 
+                                           Classes="modern-label"
+                                           Text="自动确定最后一步"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,24,0"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1" 
+                                            Orientation="Horizontal" 
+                                            Spacing="20">
+                                    <CheckBox Classes="modern"
+                                              IsChecked="{Binding AutoConfirm}"
+                                              IsEnabled="{Binding SelectedOperationMode, Converter={StaticResource IntToBoolConverter}}"
+                                              VerticalAlignment="Center"/>
+                                    <Border Classes="danger-icon"
+                                            Width="36" Height="36" 
+                                            VerticalAlignment="Center"
+                                            ToolTip.Tip="慎重选择！如果选中，程序会自动点击最后一步抢房，如果不选中，程序会停在最后一步，需要手动点击确认">
+                                        <TextBlock Text="!"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontWeight="Bold"
+                                                   FontSize="20"
+                                                   Foreground="White"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 社区条件设置 - 可折叠 -->
+                <Border Classes="collapsible-card">
+                    <Grid RowDefinitions="Auto,Auto">
+                        <Button Grid.Row="0" 
+                                Classes="collapse-header"
+                                Click="OnCommunityToggle"
+                                x:Name="CommunityToggle">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBlock Text="🏘️" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="社区条件设置" VerticalAlignment="Center"/>
+                                <Border Classes="success-icon"
+                                        Width="32" Height="32" 
+                                        VerticalAlignment="Center"
+                                        Margin="12,0,0,0"
+                                        ToolTip.Tip="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选">
+                                    <TextBlock Text="?"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontWeight="Bold"
+                                               FontSize="16"
+                                               Foreground="White"/>
+                                </Border>
+                                <TextBlock Text="▶" 
+                                           x:Name="CommunityIcon"
+                                           FontSize="14" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <StackPanel Grid.Row="1" 
+                                    x:Name="CommunityContent"
+                                    Spacing="20" 
+                                    Margin="24,0,24,24"
+                                    IsVisible="False">
+                            <Button Classes="modern-primary" 
+                                    Content="➕ 添加条件" 
+                                    Command="{Binding AddCommunityCommand}" 
+                                    HorizontalAlignment="Left"/>
+
+                            <!-- 社区条件DataGrid -->
+                            <Border Background="{DynamicResource ThemeCardBackground}" 
+                                    BorderBrush="{DynamicResource ThemeBorder}" 
+                                    BorderThickness="2" 
+                                    CornerRadius="12" 
+                                    Padding="0"
+                                    MinHeight="200"
+                                    ClipToBounds="True">
+                                <DataGrid Classes="modern"
+                                          ItemsSource="{Binding CommunityConditions}"
+                                          CanUserReorderColumns="False"
+                                          CanUserResizeColumns="True"
+                                          CanUserSortColumns="True"
+                                          GridLinesVisibility="None"
+                                          HeadersVisibility="Column"
+                                          MinHeight="180"
+                                          MaxHeight="300"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          CornerRadius="12">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="*" MinWidth="120"/>
+                                        <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="80"/>
+                                        <DataGridTextColumn Header="层数范围" Binding="{Binding FloorRange}" Width="100"/>
+                                        <DataGridTextColumn Header="最高价格(元/月)" Binding="{Binding MaxPrice}" Width="120"/>
+                                        <DataGridTextColumn Header="最小面积(m²)" Binding="{Binding LeastArea}" Width="120"/>
+                                        <DataGridTextColumn Header="房屋类型" Binding="{Binding HouseTypeDescription}" Width="100"/>
+                                        <DataGridTemplateColumn Header="操作" Width="80">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Classes="modern-danger" 
+                                                            Content="删除" 
+                                                            Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
+                                                            CommandParameter="{Binding}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 固定的日志输出区域 - 可动态调整高度和跳出 -->
+        <Border Grid.Row="2" 
+                Classes="modern-card"
+                Margin="24,20,24,0"
+                x:Name="LogArea"
+                Height="120">
+            <StackPanel Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <TextBlock Text="📋" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBlock Classes="modern-title" Text="日志输出" FontSize="22"/>
+                    <Border Classes="success-icon"
+                            Width="28" Height="28"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="📊"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="14"
+                                   Foreground="White"/>
+                    </Border>
+                    <TextBlock Classes="modern-subtitle" 
+                               Text="💤 准备就绪"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               x:Name="LogStatusText"/>
+                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled">
+                    <TextBox Classes="modern-log"
+                             Text="{Binding LogText}"
+                             IsReadOnly="True"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             x:Name="LogTextBox"
+                             Height="40"/>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+        <!-- 固定的操作按钮区域 - 更加醒目的设计 -->
+        <Border Grid.Row="3" 
+                BorderBrush="{DynamicResource ThemeBorder}" 
+                BorderThickness="0,1,0,0"
+                Padding="24,24"
+                x:Name="FooterBorder">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Color="#FFFFFF" Offset="0"/>
+                    <GradientStop Color="#F8F9FA" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="32">
+                <Button Classes="modern-primary" 
+                        Content="🚀 开始抢房" 
+                        Command="{Binding StartProcessCommand}"
+                        IsEnabled="{Binding !IsRunning}"
+                        MinWidth="180"
+                        FontSize="18"/>
+                
+                <Button Classes="modern-secondary" 
+                        Content="⏹️ 停止抢房" 
+                        Command="{Binding StopProcessCommand}"
+                        IsEnabled="{Binding IsRunning}"
+                        MinWidth="180"
+                        FontSize="18"/>
+                
+                <Button Classes="modern-secondary" 
+                        Content="📖 GitHub" 
+                        Command="{Binding OpenGitHubCommand}"
+                        MinWidth="160"
+                        FontSize="16"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+
+</Window>
