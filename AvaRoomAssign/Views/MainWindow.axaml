@@ -8,7 +8,7 @@
         x:Class="AvaRoomAssign.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/house.ico"
-        Title="抢房好好好 - Avalonia版 Ver 1.0.6 By: hp"
+        Title="抢房好好好 - Avalonia版 Ver 2.0.0 By: hp"
         Width="950" Height="950"
         WindowStartupLocation="CenterScreen"
         CanResize="true">
@@ -36,8 +36,8 @@
         <SolidColorBrush x:Key="ThemeLogText" Color="#198754"/>
         <!-- 表格相关颜色 -->
         <SolidColorBrush x:Key="ThemeTableAlternating" Color="#F8F9FA"/>
-        <SolidColorBrush x:Key="ThemeTableHover" Color="#E3F2FD"/>
-        <SolidColorBrush x:Key="ThemeTableSelected" Color="#BBDEFB"/>
+        <SolidColorBrush x:Key="ThemeTableHover" Color="#E8F4FD"/>
+        <SolidColorBrush x:Key="ThemeTableSelected" Color="#D1E7DD"/>
         
         <!-- 深色主题资源 - 更加生动的配色 -->
         <SolidColorBrush x:Key="DarkThemeBackground" Color="#0D1117"/>
@@ -102,11 +102,13 @@
         </Style>
 
         <Style Selector="Button.collapse-header:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ThemeTableHover}"/>
+            <Setter Property="Background" Value="#BBDEFB"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
         <Style Selector="Button.collapse-header:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+            <Setter Property="Background" Value="#90CAF9"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
         <!-- 主要按钮样式 - 更炫酷的渐变色效果 -->
@@ -114,8 +116,8 @@
             <Setter Property="Background">
                 <Setter.Value>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                        <GradientStop Color="#667EEA" Offset="0"/>
-                        <GradientStop Color="#764BA2" Offset="1"/>
+                        <GradientStop Color="#4C6EF5" Offset="0"/>
+                        <GradientStop Color="#6741D9" Offset="1"/>
                     </LinearGradientBrush>
                 </Setter.Value>
             </Setter>
@@ -125,70 +127,59 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#40667EEA" OffsetX="0" OffsetY="4" BlurRadius="12"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style Selector="Button.modern-primary:pointerover /template/ ContentPresenter">
             <Setter Property="Background">
                 <Setter.Value>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                        <GradientStop Color="#5A6FD8" Offset="0"/>
-                        <GradientStop Color="#6A4C93" Offset="1"/>
+                        <GradientStop Color="#3B5BDB" Offset="0"/>
+                        <GradientStop Color="#5F3DC4" Offset="1"/>
                     </LinearGradientBrush>
                 </Setter.Value>
             </Setter>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#60667EEA" OffsetX="0" OffsetY="6" BlurRadius="16"/>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,14"/>
         </Style>
 
         <Style Selector="Button.modern-primary:pressed /template/ ContentPresenter">
             <Setter Property="Background">
                 <Setter.Value>
                     <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                        <GradientStop Color="#4A5BC6" Offset="0"/>
-                        <GradientStop Color="#5A3E81" Offset="1"/>
+                        <GradientStop Color="#364FC7" Offset="0"/>
+                        <GradientStop Color="#5530AF" Offset="1"/>
                     </LinearGradientBrush>
                 </Setter.Value>
             </Setter>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#80667EEA" OffsetX="0" OffsetY="2" BlurRadius="8"/>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,14"/>
         </Style>
 
         <Style Selector="Button.modern-primary:disabled /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,14"/>
         </Style>
 
         <!-- 次要按钮样式 -->
         <Style Selector="Button.modern-secondary">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="Foreground" Value="#364FC7"/>
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="20,14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderBrush" Value="#364FC7"/>
         </Style>
 
         <Style Selector="Button.modern-secondary:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="Background" Value="#364FC7"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#400D6EFD" OffsetX="0" OffsetY="2" BlurRadius="8"/>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="#364FC7"/>
+            <Setter Property="Padding" Value="20,14"/>
         </Style>
 
         <!-- 危险按钮样式 -->
@@ -207,11 +198,6 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#40FF6B6B" OffsetX="0" OffsetY="2" BlurRadius="6"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style Selector="Button.modern-danger:pointerover /template/ ContentPresenter">
@@ -226,41 +212,113 @@
         </Style>
 
         <Style Selector="Button.modern-danger:pointerover">
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#60FF6B6B" OffsetX="0" OffsetY="4" BlurRadius="8"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style Selector="Button.modern-danger:pressed">
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#80FF6B6B" OffsetX="0" OffsetY="1" BlurRadius="4"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <!-- 主题切换按钮 -->
         <Style Selector="Button.theme-toggle">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
-            <Setter Property="CornerRadius" Value="22"/>
-            <Setter Property="Padding" Value="12"/>
-            <Setter Property="FontSize" Value="20"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
-            <Setter Property="Width" Value="48"/>
-            <Setter Property="Height" Value="48"/>
-        </Style>
-
-        <Style Selector="Button.theme-toggle:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
-            <Setter Property="Effect">
+            <Setter Property="Background">
                 <Setter.Value>
-                    <DropShadowEffect Color="#20000000" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#FD7E14" Offset="0"/>
+                        <GradientStop Color="#E8590C" Offset="1"/>
+                    </LinearGradientBrush>
                 </Setter.Value>
             </Setter>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.theme-toggle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#E8590C" Offset="0"/>
+                        <GradientStop Color="#D6336C" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="Button.theme-toggle:pointerover">
+        </Style>
+
+        <Style Selector="Button.theme-toggle:pressed /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#D6336C" Offset="0"/>
+                        <GradientStop Color="#C2255C" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- GitHub图标按钮样式 -->
+        <Style Selector="Button.github-icon">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#24292E" Offset="0"/>
+                        <GradientStop Color="#444D56" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.github-icon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#0D1117" Offset="0"/>
+                        <GradientStop Color="#21262D" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="Button.github-icon:pointerover">
+        </Style>
+
+        <Style Selector="Button.github-icon:pressed /template/ ContentPresenter">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#0A0E12" Offset="0"/>
+                        <GradientStop Color="#161B22" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <Style Selector="Button.github-icon:pressed">
         </Style>
 
         <!-- 输入框样式 -->
@@ -277,11 +335,6 @@
         <Style Selector="TextBox.modern:focus">
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
             <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect Color="#400D6EFD" OffsetX="0" OffsetY="0" BlurRadius="12"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <!-- ComboBox样式 -->
@@ -327,6 +380,9 @@
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeSuccess}"/>
             <Setter Property="Padding" Value="20"/>
+            <Setter Property="MinHeight" Value="60"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect Color="#20198754" OffsetX="0" OffsetY="0" BlurRadius="8"/>
@@ -345,8 +401,9 @@
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="GridLinesVisibility" Value="None"/>
             <Setter Property="CanUserReorderColumns" Value="False"/>
-            <Setter Property="CanUserSortColumns" Value="True"/>
+            <Setter Property="CanUserSortColumns" Value="False"/>
             <Setter Property="FontSize" Value="14"/>
+            <Setter Property="RowHeight" Value="48"/>
         </Style>
 
         <!-- DataGrid Header样式 -->
@@ -354,11 +411,13 @@
             <Setter Property="Background" Value="{DynamicResource ThemeTableAlternating}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="12,14"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Height" Value="44"/>
         </Style>
 
         <!-- 第一个表头的圆角 -->
@@ -387,25 +446,41 @@
 
         <!-- DataGrid 悬停效果 -->
         <Style Selector="DataGrid.modern DataGridRow:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ThemeTableHover}"/>
+            <Setter Property="Background" Value="#BBDEFB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
         </Style>
 
         <!-- DataGrid 选中效果 -->
         <Style Selector="DataGrid.modern DataGridRow:selected">
-            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+            <Setter Property="Background" Value="#90CAF9"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
         </Style>
 
         <!-- DataGrid 选中且悬停 -->
         <Style Selector="DataGrid.modern DataGridRow:selected:pointerover">
-            <Setter Property="Background" Value="{DynamicResource ThemeTableSelected}"/>
+            <Setter Property="Background" Value="#64B5F6"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
         </Style>
 
         <!-- DataGrid Cell样式 -->
         <Style Selector="DataGrid.modern DataGridCell">
-            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Padding" Value="12,10"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        
+        <!-- DataGrid Cell内的TextBlock样式 -->
+        <Style Selector="DataGrid.modern DataGridCell TextBlock">
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="ToolTip.Tip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
         </Style>
 
         <!-- 信息图标样式 - 更炫酷的颜色 -->
@@ -523,19 +598,10 @@
 
                 <StackPanel Grid.Column="0" Spacing="8">
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Classes="modern-title" Text="🏠"/>
+                        <TextBlock Classes="modern-title" Text="🏠" FontSize="32"/>
                         <TextBlock Classes="modern-title" Text="抢房好好好"/>
-                        <Border Classes="success-icon"
-                                Width="32" Height="32"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="⚡"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       FontSize="16"
-                                       Foreground="White"/>
-                        </Border>
                     </StackPanel>
-                    <TextBlock Classes="modern-subtitle" Text="Avalonia版 Ver 1.0.6 By: hp - 现代化界面设计"/>
+                    <TextBlock Classes="modern-subtitle" Text="Avalonia版 Ver 2.0.0 By: hp - 自动化抢公租房"/>
                 </StackPanel>
 
                 <Button Grid.Column="1" 
@@ -563,7 +629,7 @@
                                 Click="OnOperationModeToggle"
                                 x:Name="OperationModeToggle">
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <TextBlock Text="🚀" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="🚀" FontSize="20" VerticalAlignment="Center"/>
                                 <TextBlock Text="运行模式配置" VerticalAlignment="Center"/>
                                 <TextBlock Text="▼" 
                                            x:Name="OperationModeIcon"
@@ -621,7 +687,7 @@
                                 Click="OnAccountToggle"
                                 x:Name="AccountToggle">
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <TextBlock Text="👤" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="👤" FontSize="20" VerticalAlignment="Center"/>
                                 <TextBlock Text="账户信息配置" VerticalAlignment="Center"/>
                                 <TextBlock Text="▶" 
                                            x:Name="AccountIcon"
@@ -711,7 +777,7 @@
                                 Click="OnExecutionToggle"
                                 x:Name="ExecutionToggle">
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <TextBlock Text="⏰" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="⏰" FontSize="20" VerticalAlignment="Center"/>
                                 <TextBlock Text="执行参数配置" VerticalAlignment="Center"/>
                                 <TextBlock Text="▶" 
                                            x:Name="ExecutionIcon"
@@ -796,10 +862,10 @@
                                 Click="OnCommunityToggle"
                                 x:Name="CommunityToggle">
                             <StackPanel Orientation="Horizontal" Spacing="16">
-                                <TextBlock Text="🏘️" FontSize="24" VerticalAlignment="Center"/>
+                                <TextBlock Text="🏘️" FontSize="20" VerticalAlignment="Center"/>
                                 <TextBlock Text="社区条件设置" VerticalAlignment="Center"/>
                                 <Border Classes="success-icon"
-                                        Width="32" Height="32" 
+                                        Width="28" Height="28" 
                                         VerticalAlignment="Center"
                                         Margin="12,0,0,0"
                                         ToolTip.Tip="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选">
@@ -807,7 +873,7 @@
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
                                                FontWeight="Bold"
-                                               FontSize="16"
+                                               FontSize="14"
                                                Foreground="White"/>
                                 </Border>
                                 <TextBlock Text="▶" 
@@ -829,45 +895,41 @@
                                     HorizontalAlignment="Left"/>
 
                             <!-- 社区条件DataGrid -->
-                            <Border Background="{DynamicResource ThemeCardBackground}" 
-                                    BorderBrush="{DynamicResource ThemeBorder}" 
-                                    BorderThickness="2" 
-                                    CornerRadius="12" 
-                                    Padding="0"
-                                    MinHeight="200"
-                                    ClipToBounds="True">
-                                <DataGrid Classes="modern"
-                                          ItemsSource="{Binding CommunityConditions}"
-                                          CanUserReorderColumns="False"
-                                          CanUserResizeColumns="True"
-                                          CanUserSortColumns="True"
-                                          GridLinesVisibility="None"
-                                          HeadersVisibility="Column"
-                                          MinHeight="180"
-                                          MaxHeight="300"
-                                          Background="Transparent"
-                                          BorderThickness="0"
-                                          CornerRadius="12">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="*" MinWidth="120"/>
-                                        <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="80"/>
-                                        <DataGridTextColumn Header="层数范围" Binding="{Binding FloorRange}" Width="100"/>
-                                        <DataGridTextColumn Header="最高价格(元/月)" Binding="{Binding MaxPrice}" Width="120"/>
-                                        <DataGridTextColumn Header="最小面积(m²)" Binding="{Binding LeastArea}" Width="120"/>
-                                        <DataGridTextColumn Header="房屋类型" Binding="{Binding HouseTypeDescription}" Width="100"/>
-                                        <DataGridTemplateColumn Header="操作" Width="80">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <Button Classes="modern-danger" 
-                                                            Content="删除" 
-                                                            Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
-                                                            CommandParameter="{Binding}"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </Border>
+                            <DataGrid Classes="modern"
+                                      ItemsSource="{Binding CommunityConditions}"
+                                      CanUserReorderColumns="False"
+                                      CanUserResizeColumns="True"
+                                      CanUserSortColumns="False"
+                                      GridLinesVisibility="None"
+                                      HeadersVisibility="Column"
+                                      MinHeight="200"
+                                      MaxHeight="320"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      CornerRadius="12"
+                                      AutoGenerateColumns="False"
+                                      Margin="0,8">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="140" MinWidth="120" CanUserSort="False"/>
+                                    <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="80" MinWidth="60" CanUserSort="False"/>
+                                    <DataGridTextColumn Header="层数范围" Binding="{Binding FloorRange}" Width="100" MinWidth="80" CanUserSort="False"/>
+                                    <DataGridTextColumn Header="最高价格(元/月)" Binding="{Binding MaxPrice}" Width="140" MinWidth="120" CanUserSort="False"/>
+                                    <DataGridTextColumn Header="最小面积(m²)" Binding="{Binding LeastArea}" Width="130" MinWidth="110" CanUserSort="False"/>
+                                    <DataGridTextColumn Header="房屋类型" Binding="{Binding HouseTypeDescription}" Width="100" MinWidth="80" CanUserSort="False"/>
+                                    <DataGridTemplateColumn Header="操作" Width="90" MinWidth="80" CanUserSort="False">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="modern-danger" 
+                                                        Content="删除" 
+                                                        FontSize="12"
+                                                        Padding="8,4"
+                                                        Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -875,42 +937,50 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- 固定的日志输出区域 - 可动态调整高度和跳出 -->
+        <!-- 固定的日志输出区域 - 可手动拖拽调整高度 -->
         <Border Grid.Row="2" 
                 Classes="modern-card"
                 Margin="24,20,24,0"
                 x:Name="LogArea"
-                Height="120">
-            <StackPanel Spacing="16">
-                <StackPanel Orientation="Horizontal" Spacing="16">
-                    <TextBlock Text="📋" FontSize="24" VerticalAlignment="Center"/>
+                Height="260"
+                MinHeight="120"
+                MaxHeight="600">
+            <Grid RowDefinitions="Auto,Auto,*">
+                <!-- 拖拽手柄区域 -->
+                <Border Grid.Row="0" 
+                        Height="8" 
+                        Background="Transparent"
+                        Cursor="SizeNorthSouth"
+                        x:Name="ResizeHandle">
+                    <Border Height="3" 
+                            Background="{DynamicResource ThemeBorder}" 
+                            CornerRadius="2" 
+                            Margin="40,0"
+                            Opacity="0.6"/>
+                </Border>
+                
+                <!-- 标题区域 -->
+                <StackPanel Grid.Row="1" 
+                            Orientation="Horizontal" 
+                            Spacing="16" 
+                            Margin="0,8,0,16">
+                    <TextBlock Text="📋" FontSize="20" VerticalAlignment="Center"/>
                     <TextBlock Classes="modern-title" Text="日志输出" FontSize="22"/>
-                    <Border Classes="success-icon"
-                            Width="28" Height="28"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="📊"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   FontSize="14"
-                                   Foreground="White"/>
-                    </Border>
-                    <TextBlock Classes="modern-subtitle" 
-                               Text="💤 准备就绪"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               x:Name="LogStatusText"/>
                 </StackPanel>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                              HorizontalScrollBarVisibility="Disabled">
+                
+                <!-- 日志内容区域 -->
+                <ScrollViewer Grid.Row="2" 
+                              VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled"
+                              x:Name="LogScrollViewer">
                     <TextBox Classes="modern-log"
                              Text="{Binding LogText}"
                              IsReadOnly="True"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
-                             x:Name="LogTextBox"
-                             Height="40"/>
+                             x:Name="LogTextBox"/>
                 </ScrollViewer>
-            </StackPanel>
+            </Grid>
         </Border>
 
         <!-- 固定的操作按钮区域 - 更加醒目的设计 -->
@@ -925,7 +995,7 @@
                     <GradientStop Color="#F8F9FA" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="32">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="24">
                 <Button Classes="modern-primary" 
                         Content="🚀 开始抢房" 
                         Command="{Binding StartProcessCommand}"
@@ -940,11 +1010,10 @@
                         MinWidth="180"
                         FontSize="18"/>
                 
-                <Button Classes="modern-secondary" 
-                        Content="📖 GitHub" 
+                <Button Classes="github-icon" 
+                        Content="G" 
                         Command="{Binding OpenGitHubCommand}"
-                        MinWidth="160"
-                        FontSize="16"/>
+                        ToolTip.Tip="访问GitHub"/>
             </StackPanel>
         </Border>
 

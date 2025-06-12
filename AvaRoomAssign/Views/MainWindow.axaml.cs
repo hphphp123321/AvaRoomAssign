@@ -4,8 +4,10 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Animation;
+using Avalonia.Input;
 using AvaRoomAssign.ViewModels;
 using System;
+using System.ComponentModel;
 
 namespace AvaRoomAssign.Views;
 
@@ -13,9 +15,16 @@ public partial class MainWindow : Window
 {
     private bool _isDarkTheme = false; // 默认为浅色主题
     private bool _isLogExpanded = false; // 日志区域是否展开
-    private const double LOG_NORMAL_HEIGHT = 150; // 正常状态下日志区域高度
-    private const double HEADER_HEIGHT = 120; // 标题栏高度
-    private const double FOOTER_HEIGHT = 100; // 按钮区域高度
+    private const double LOG_NORMAL_HEIGHT = 260; // 正常状态下日志区域高度
+    private const double LOG_MIN_HEIGHT = 120; // 日志区域最小高度
+    private const double LOG_MAX_HEIGHT = 600; // 日志区域最大高度
+    private const double HEADER_HEIGHT = 100; // 标题栏高度
+    private const double FOOTER_HEIGHT = 80; // 按钮区域高度
+    
+    // 拖拽相关变量
+    private bool _isResizing = false; // 是否正在调整大小
+    private double _initialHeight = 0; // 开始拖拽时的高度
+    private Avalonia.Point _initialMousePosition; // 开始拖拽时的鼠标位置
     
     public MainWindow()
     {
@@ -34,6 +43,9 @@ public partial class MainWindow : Window
         // 监听窗口大小变化
         this.SizeChanged += OnWindowSizeChanged;
         
+        // 窗口加载完成后初始化
+        this.Loaded += OnWindowLoaded;
+        
         // 订阅ViewModel的运行状态变化
         if (DataContext is MainWindowViewModel viewModel)
         {
@@ -42,15 +54,92 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 窗口加载完成事件
+    /// </summary>
+    private void OnWindowLoaded(object? sender, RoutedEventArgs e)
+    {
+        // 设置拖拽功能
+        SetupResizeHandle();
+    }
+    
+    /// <summary>
+    /// 设置拖拽手柄功能
+    /// </summary>
+    private void SetupResizeHandle()
+    {
+        var resizeHandle = this.FindControl<Border>("ResizeHandle");
+        if (resizeHandle != null)
+        {
+            resizeHandle.PointerPressed += OnResizeHandlePressed;
+            resizeHandle.PointerMoved += OnResizeHandleMoved;
+            resizeHandle.PointerReleased += OnResizeHandleReleased;
+        }
+    }
+    
+    /// <summary>
+    /// 拖拽手柄按下事件
+    /// </summary>
+    private void OnResizeHandlePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            var logArea = this.FindControl<Border>("LogArea");
+            if (logArea != null)
+            {
+                _isResizing = true;
+                _initialHeight = logArea.Height;
+                _initialMousePosition = e.GetPosition(this);
+                
+                // 开始拖拽操作
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 拖拽手柄移动事件
+    /// </summary>
+    private void OnResizeHandleMoved(object? sender, PointerEventArgs e)
+    {
+        if (_isResizing)
+        {
+            var currentPosition = e.GetPosition(this);
+            var deltaY = currentPosition.Y - _initialMousePosition.Y;
+            // 反转拖动方向：向上拖动减少高度，向下拖动增加高度
+            var newHeight = _initialHeight - deltaY;
+            
+            // 限制在最小和最大高度之间
+            newHeight = Math.Max(LOG_MIN_HEIGHT, Math.Min(LOG_MAX_HEIGHT, newHeight));
+            
+            var logArea = this.FindControl<Border>("LogArea");
+            if (logArea != null)
+            {
+                logArea.Height = newHeight;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 拖拽手柄释放事件
+    /// </summary>
+    private void OnResizeHandleReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_isResizing)
+        {
+            _isResizing = false;
+            // 结束拖拽操作
+        }
+    }
+    
+    /// <summary>
     /// 窗口大小变化事件
     /// </summary>
     private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (!_isLogExpanded)
-        {
-            UpdateLogAreaHeight();
-        }
+        // 手动拖拽模式下，窗口大小变化时不自动调整日志区域高度
+        // 用户可以通过拖拽手柄自行调整
     }
+    
+
 
     /// <summary>
     /// ViewModel属性变化事件处理
@@ -222,16 +311,11 @@ public partial class MainWindow : Window
     private void InitializeLogArea()
     {
         var logArea = this.FindControl<Border>("LogArea");
-        var logTextBox = this.FindControl<TextBox>("LogTextBox");
         var statusText = this.FindControl<TextBlock>("LogStatusText");
         
         if (logArea != null)
         {
             logArea.Height = LOG_NORMAL_HEIGHT;
-        }
-        if (logTextBox != null)
-        {
-            logTextBox.Height = LOG_NORMAL_HEIGHT - 80; // 减去标题和边距
         }
         if (statusText != null)
         {
@@ -241,27 +325,50 @@ public partial class MainWindow : Window
         _isLogExpanded = false;
     }
     
+
+    
+
+    
     /// <summary>
-    /// 更新日志区域高度（仅在正常状态下）
+    /// 获取配置区域的实际高度
     /// </summary>
-    private void UpdateLogAreaHeight()
+    /// <returns>配置区域高度</returns>
+    private double GetConfigAreaHeight()
     {
-        if (_isLogExpanded) return; // 展开状态下不更新
+        double totalHeight = 0;
         
-        var logArea = this.FindControl<Border>("LogArea");
-        var logTextBox = this.FindControl<TextBox>("LogTextBox");
+        // 计算每个面板的高度
+        var panelNames = new[] { "OperationMode", "Account", "Execution", "Community" };
         
-        if (logArea != null && logTextBox != null)
+        foreach (var panelName in panelNames)
         {
-            // 计算可用高度
-            double windowHeight = this.Height;
-            double availableHeight = windowHeight - HEADER_HEIGHT - FOOTER_HEIGHT - 100; // 100为边距和配置项预留
-            
-            double logHeight = Math.Max(LOG_NORMAL_HEIGHT, Math.Min(300, availableHeight * 0.3)); // 最多占30%
-            
-            logArea.Height = logHeight;
-            logTextBox.Height = logHeight - 80;
+            var content = this.FindControl<StackPanel>($"{panelName}Content");
+            if (content != null && content.IsVisible)
+            {
+                // 展开面板的估计高度
+                switch (panelName)
+                {
+                    case "OperationMode":
+                        totalHeight += 120; // 运行模式配置面板高度
+                        break;
+                    case "Account":
+                        totalHeight += 200; // 账户信息配置面板高度
+                        break;
+                    case "Execution":
+                        totalHeight += 180; // 执行参数配置面板高度
+                        break;
+                    case "Community":
+                        totalHeight += 350; // 社区条件设置面板高度（包含表格）
+                        break;
+                }
+            }
+            else
+            {
+                totalHeight += 60; // 折叠状态下的头部高度
+            }
         }
+        
+        return totalHeight;
     }
     
     /// <summary>
@@ -271,27 +378,33 @@ public partial class MainWindow : Window
     {
         var mainGrid = this.FindControl<Grid>("MainGrid");
         var logArea = this.FindControl<Border>("LogArea");
-        var logTextBox = this.FindControl<TextBox>("LogTextBox");
         var statusText = this.FindControl<TextBlock>("LogStatusText");
         
-        if (mainGrid != null && logArea != null && logTextBox != null)
+        if (mainGrid != null && logArea != null)
         {
             _isLogExpanded = true;
             
-            // 将日志区域移动到第1行（配置区域的位置），并占据该行的全部空间
+            // 直接将日志区域移动到第1行（配置区域的位置），覆盖所有配置项
             Grid.SetRow(logArea, 1);
             Grid.SetRowSpan(logArea, 1);
             
-            // 隐藏配置区域
+            // 完全隐藏配置区域
             var configScrollViewer = this.FindControl<ScrollViewer>("ConfigScrollViewer");
             if (configScrollViewer != null)
             {
                 configScrollViewer.IsVisible = false;
             }
             
-            // 设置日志区域为自动高度，占据大部分空间
-            logArea.Height = double.NaN; // 自动高度
-            logTextBox.Height = double.NaN; // 自动高度
+            // 计算窗口可用高度，让日志区域占据配置项的全部空间
+            double windowHeight = this.Height;
+            double headerHeight = HEADER_HEIGHT; // 顶部标题栏高度
+            double footerHeight = FOOTER_HEIGHT; // 底部按钮区域高度
+            double availableHeight = windowHeight - headerHeight - footerHeight - 48; // 48为边距
+            
+            double logHeight = Math.Max(400, availableHeight); // 最小400像素
+            
+            // 只需要设置LogArea的高度，TextBox会自动适应
+            logArea.Height = logHeight;
             
             // 更新状态文本
             if (statusText != null)
@@ -325,8 +438,11 @@ public partial class MainWindow : Window
                 configScrollViewer.IsVisible = true;
             }
             
-            // 恢复日志区域的固定高度
-            UpdateLogAreaHeight();
+            // 恢复日志区域的默认高度
+            if (logArea != null)
+            {
+                logArea.Height = LOG_NORMAL_HEIGHT;
+            }
             
             // 更新状态文本
             if (statusText != null)
@@ -356,16 +472,7 @@ public partial class MainWindow : Window
             icon.Text = isCollapsed ? "▶" : "▼";
         }
         
-        // 更新日志区域高度（如果未展开）
-        if (!_isLogExpanded)
-        {
-            // 延迟更新以等待布局完成
-            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
-            {
-                await System.Threading.Tasks.Task.Delay(50);
-                UpdateLogAreaHeight();
-            });
-        }
+        // 手动拖拽模式下不自动更新日志区域高度
     }
     
     /// <summary>
@@ -435,16 +542,7 @@ public partial class MainWindow : Window
             content.IsVisible = !isCurrentlyVisible;
             icon.Text = isCurrentlyVisible ? "▶" : "▼";
             
-            // 更新日志区域高度（如果未展开）
-            if (!_isLogExpanded)
-            {
-                // 延迟更新以等待布局完成
-                Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    await System.Threading.Tasks.Task.Delay(50);
-                    UpdateLogAreaHeight();
-                });
-            }
+            // 手动拖拽模式下不自动更新日志区域高度
         }
     }
 }
