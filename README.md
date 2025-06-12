@@ -78,7 +78,7 @@ AvaRoomAssign/
 #### 方式二：源码编译
 ```bash
 # 克隆项目
-git clone https://github.com/your-repo/AvaRoomAssign.git
+git clone https://github.com/hphphp123321/AvaRoomAssign.git
 cd AvaRoomAssign
 
 # 标准编译 (需要.NET运行时)
@@ -297,7 +297,7 @@ dotnet --version
 ### 开发环境搭建
 ```bash
 # 克隆项目
-git clone https://github.com/your-repo/AvaRoomAssign.git
+git clone https://github.com/hphphp123321/AvaRoomAssign.git
 
 # 安装 .NET 9.0 SDK
 # https://dotnet.microsoft.com/download

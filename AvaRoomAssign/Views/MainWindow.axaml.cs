@@ -335,9 +335,6 @@ public partial class MainWindow : Window
         _isLogExpanded = false;
     }
     
-
-    
-
     
     /// <summary>
     /// 获取配置区域的实际高度

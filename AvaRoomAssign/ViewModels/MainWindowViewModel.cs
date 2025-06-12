@@ -364,7 +364,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "https://github.com/hphphp123321/RoomAssign/tree/simple",
+                FileName = "https://github.com/hphphp123321/AvaRoomAssign",
                 UseShellExecute = true
             };
             Process.Start(psi);
@@ -437,11 +437,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private IWebDriver GetDriver(DriverType driverType)
     {
-        return driverType switch
+        IWebDriver driver = null!;
+
+        switch (driverType)
         {
-            DriverType.Chrome => new ChromeDriver(new ChromeOptions()),
-            DriverType.Edge => new EdgeDriver(new EdgeOptions()),
-            _ => throw new ArgumentOutOfRangeException(nameof(driverType), driverType, null)
-        };
+            case DriverType.Chrome:
+                var chromeOptions = new ChromeOptions();
+                driver = new ChromeDriver(chromeOptions);
+                break;
+            case DriverType.Edge:
+                var edgeOptions = new EdgeOptions();
+                edgeOptions.AddArgument("--edge-skip-compat-layer-relaunch");
+                driver = new EdgeDriver(edgeOptions);
+                break;
+            default:
+                break;
+        }
+
+        return driver;
     }
 }
