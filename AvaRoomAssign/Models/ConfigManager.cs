@@ -8,6 +8,20 @@ using System.Threading.Tasks;
 namespace AvaRoomAssign.Models
 {
     /// <summary>
+    /// JSON序列化上下文，用于AOT支持
+    /// </summary>
+    [JsonSerializable(typeof(AppConfig))]
+    [JsonSerializable(typeof(HouseConditionData))]
+    [JsonSerializable(typeof(List<HouseConditionData>))]
+    [JsonSourceGenerationOptions(
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+        GenerationMode = JsonSourceGenerationMode.Default)]
+    public partial class ConfigJsonContext : JsonSerializerContext
+    {
+    }
+
+    /// <summary>
     /// 应用程序配置
     /// </summary>
     public class AppConfig
@@ -139,11 +153,13 @@ namespace AvaRoomAssign.Models
             ConfigFileName
         );
 
+        // 为AOT优化的JSON选项
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            WriteIndented = true, // 格式化输出，便于阅读
+            WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping // 支持中文字符
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            TypeInfoResolver = ConfigJsonContext.Default
         };
 
         /// <summary>
@@ -161,8 +177,8 @@ namespace AvaRoomAssign.Models
                     Directory.CreateDirectory(directory);
                 }
 
-                // 序列化并保存到文件
-                var json = JsonSerializer.Serialize(config, JsonOptions);
+                // 使用源生成器序列化
+                var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                 await File.WriteAllTextAsync(ConfigPath, json);
                 
                 Console.WriteLine("✅ 配置已保存");
@@ -170,6 +186,19 @@ namespace AvaRoomAssign.Models
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ 保存配置失败: {ex.Message}");
+                
+                // 尝试写入到备用位置（应用程序目录）
+                try
+                {
+                    var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                    var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
+                    await File.WriteAllTextAsync(fallbackPath, json);
+                    Console.WriteLine($"✅ 配置已保存到备用位置: {fallbackPath}");
+                }
+                catch (Exception fallbackEx)
+                {
+                    Console.WriteLine($"❌ 备用保存也失败: {fallbackEx.Message}");
+                }
             }
         }
 
@@ -181,23 +210,35 @@ namespace AvaRoomAssign.Models
         {
             try
             {
-                if (!File.Exists(ConfigPath))
+                // 首先尝试从用户目录加载
+                if (File.Exists(ConfigPath))
                 {
-                    Console.WriteLine("🔍 配置文件不存在，将创建默认配置");
-                    return CreateDefaultConfig();
+                    var json = await File.ReadAllTextAsync(ConfigPath);
+                    var config = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.AppConfig);
+                    
+                    if (config != null)
+                    {
+                        Console.WriteLine($"✅ 配置已从用户目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        return config;
+                    }
                 }
-
-                var json = await File.ReadAllTextAsync(ConfigPath);
-                var config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
                 
-                if (config == null)
+                // 尝试从应用程序目录加载（备用位置）
+                var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                if (File.Exists(fallbackPath))
                 {
-                    Console.WriteLine("⚠️ 配置文件格式错误，使用默认配置");
-                    return CreateDefaultConfig();
+                    var json = await File.ReadAllTextAsync(fallbackPath);
+                    var config = JsonSerializer.Deserialize(json, ConfigJsonContext.Default.AppConfig);
+                    
+                    if (config != null)
+                    {
+                        Console.WriteLine($"✅ 配置已从应用程序目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        return config;
+                    }
                 }
 
-                Console.WriteLine($"✅ 配置已加载，包含 {config.CommunityConditions.Count} 个社区条件");
-                return config;
+                Console.WriteLine("🔍 配置文件不存在，将创建默认配置");
+                return CreateDefaultConfig();
             }
             catch (Exception ex)
             {
@@ -221,13 +262,26 @@ namespace AvaRoomAssign.Models
                     Directory.CreateDirectory(directory);
                 }
 
-                // 序列化并保存到文件
-                var json = JsonSerializer.Serialize(config, JsonOptions);
+                // 使用源生成器序列化
+                var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                 File.WriteAllText(ConfigPath, json);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ 快速保存配置失败: {ex.Message}");
+                
+                // 尝试写入到备用位置
+                try
+                {
+                    var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                    var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
+                    File.WriteAllText(fallbackPath, json);
+                    Console.WriteLine($"✅ 配置已保存到备用位置: {fallbackPath}");
+                }
+                catch (Exception fallbackEx)
+                {
+                    Console.WriteLine($"❌ 备用保存也失败: {fallbackEx.Message}");
+                }
             }
         }
 
@@ -265,10 +319,19 @@ namespace AvaRoomAssign.Models
         {
             try
             {
+                // 删除主配置文件
                 if (File.Exists(ConfigPath))
                 {
                     File.Delete(ConfigPath);
                     Console.WriteLine("✅ 配置文件已删除");
+                }
+                
+                // 删除备用配置文件
+                var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+                if (File.Exists(fallbackPath))
+                {
+                    File.Delete(fallbackPath);
+                    Console.WriteLine("✅ 备用配置文件已删除");
                 }
             }
             catch (Exception ex)
@@ -280,6 +343,21 @@ namespace AvaRoomAssign.Models
         /// <summary>
         /// 检查配置文件是否存在
         /// </summary>
-        public static bool ConfigExists() => File.Exists(ConfigPath);
+        public static bool ConfigExists() => File.Exists(ConfigPath) || File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName));
+
+        /// <summary>
+        /// 获取实际使用的配置文件路径
+        /// </summary>
+        public static string GetActualConfigPath()
+        {
+            if (File.Exists(ConfigPath))
+                return ConfigPath;
+            
+            var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
+            if (File.Exists(fallbackPath))
+                return fallbackPath;
+            
+            return ConfigPath; // 返回默认路径
+        }
     }
 } 
