@@ -11,6 +11,8 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Edge;
 using Avalonia.Threading;
+using System.Linq;
+using System.Collections.Specialized;
 
 namespace AvaRoomAssign.ViewModels;
 
@@ -67,19 +69,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private CancellationTokenSource? _cancellationTokenSource;
     private ISelector? _currentSelector;
+    private bool _isLoadingConfig = false; // 防止加载配置时触发保存
 
     public MainWindowViewModel()
     {
         try
         {
-            // 添加默认测试数据
-            var defaultCondition = new HouseCondition("正荣景苑", 0, "3-4,6", 0, 0, HouseType.OneRoom);
-            CommunityConditions.Add(defaultCondition);
-            
-            // 延迟设置控制台重定向
+            // 延迟初始化，先加载配置再设置控制台重定向
             Task.Run(async () =>
             {
-                await Task.Delay(2000);
+                await LoadConfigurationAsync();
+                
+                await Task.Delay(1000);
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     try
@@ -87,7 +88,8 @@ public partial class MainWindowViewModel : ViewModelBase
                         var consoleWriter = new ConsoleTextWriter(AppendLog);
                         Console.SetOut(consoleWriter);
                         Console.WriteLine("✅ 控制台重定向已设置");
-                        Console.WriteLine($"✅ 当前社区条件数量: {CommunityConditions.Count}");
+                        Console.WriteLine($"✅ 配置加载完成，包含 {CommunityConditions.Count} 个社区条件");
+                        Console.WriteLine($"📁 配置文件路径: {ConfigManager.GetConfigPath()}");
                     }
                     catch (Exception ex)
                     {
@@ -100,6 +102,119 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             System.Diagnostics.Debug.WriteLine($"❌ ViewModel初始化失败: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 加载配置
+    /// </summary>
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            _isLoadingConfig = true;
+            var config = await ConfigManager.LoadConfigAsync();
+            
+            // 在UI线程中更新属性
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // 更新基本配置
+                SelectedOperationMode = config.SelectedOperationMode;
+                SelectedBrowserType = config.SelectedBrowserType;
+                UserAccount = config.UserAccount;
+                UserPassword = config.UserPassword;
+                Cookie = config.Cookie;
+                ApplierName = config.ApplierName;
+                StartHour = config.StartHour;
+                StartMinute = config.StartMinute;
+                StartSecond = config.StartSecond;
+                ClickInterval = config.ClickInterval;
+                AutoConfirm = config.AutoConfirm;
+                
+                // 更新社区条件
+                CommunityConditions.Clear();
+                foreach (var conditionData in config.CommunityConditions)
+                {
+                    CommunityConditions.Add(conditionData.ToHouseCondition());
+                }
+                
+                // 如果没有社区条件，添加默认条件
+                if (CommunityConditions.Count == 0)
+                {
+                    var defaultCondition = new HouseCondition("正荣景苑", 0, "3-4,6", 0, 0, HouseType.OneRoom);
+                    CommunityConditions.Add(defaultCondition);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ 加载配置失败: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingConfig = false;
+            
+            // 加载完成后开始监听属性变化
+            StartPropertyChangeMonitoring();
+        }
+    }
+
+    /// <summary>
+    /// 保存当前配置
+    /// </summary>
+    private async Task SaveConfigurationAsync()
+    {
+        if (_isLoadingConfig) return; // 加载配置时不保存
+        
+        try
+        {
+            var config = new AppConfig
+            {
+                SelectedOperationMode = SelectedOperationMode,
+                SelectedBrowserType = SelectedBrowserType,
+                UserAccount = UserAccount,
+                UserPassword = UserPassword,
+                Cookie = Cookie,
+                ApplierName = ApplierName,
+                StartHour = StartHour,
+                StartMinute = StartMinute,
+                StartSecond = StartSecond,
+                ClickInterval = ClickInterval,
+                AutoConfirm = AutoConfirm,
+                CommunityConditions = CommunityConditions.Select(HouseConditionData.FromHouseCondition).ToList()
+            };
+            
+            // 使用异步保存，避免阻塞UI
+            await Task.Run(() => ConfigManager.SaveConfig(config));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ 保存配置失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 开始监听属性变化
+    /// </summary>
+    private void StartPropertyChangeMonitoring()
+    {
+        // 监听普通属性变化
+        PropertyChanged += async (sender, e) =>
+        {
+            if (_isLoadingConfig) return;
+            
+            // 排除不需要保存的属性
+            var excludeProperties = new[] { nameof(LogText), nameof(IsRunning) };
+            if (excludeProperties.Contains(e.PropertyName)) return;
+            
+            await SaveConfigurationAsync();
+        };
+        
+        // 监听集合变化
+        CommunityConditions.CollectionChanged += async (sender, e) =>
+        {
+            if (_isLoadingConfig) return;
+            await SaveConfigurationAsync();
+        };
     }
 
     [RelayCommand]
@@ -257,6 +372,47 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             Console.WriteLine($"打开GitHub链接失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 重置配置到默认值
+    /// </summary>
+    [RelayCommand]
+    private async Task ResetConfigurationAsync()
+    {
+        try
+        {
+            _isLoadingConfig = true;
+            
+            // 删除配置文件
+            ConfigManager.DeleteConfig();
+            
+            // 重新加载默认配置
+            await LoadConfigurationAsync();
+            
+            Console.WriteLine("✅ 配置已重置为默认值");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ 重置配置失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 手动保存配置
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveConfigurationManuallyAsync()
+    {
+        try
+        {
+            await SaveConfigurationAsync();
+            Console.WriteLine("✅ 配置已手动保存");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ 手动保存配置失败: {ex.Message}");
         }
     }
 

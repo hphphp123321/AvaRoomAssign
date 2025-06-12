@@ -6,6 +6,7 @@ using Avalonia.Styling;
 using Avalonia.Animation;
 using Avalonia.Input;
 using AvaRoomAssign.ViewModels;
+using AvaRoomAssign.Models;
 using System;
 using System.ComponentModel;
 
@@ -165,13 +166,22 @@ public partial class MainWindow : Window
     /// <summary>
     /// 初始化主题设置
     /// </summary>
-    private void InitializeTheme()
+    private async void InitializeTheme()
     {
         try
         {
-            // 检测系统主题
-            var themeVariant = ActualThemeVariant;
-            _isDarkTheme = themeVariant == ThemeVariant.Dark;
+            // 先尝试从配置文件加载主题设置
+            if (ConfigManager.ConfigExists())
+            {
+                var config = await ConfigManager.LoadConfigAsync();
+                _isDarkTheme = config.IsDarkTheme;
+            }
+            else
+            {
+                // 如果配置文件不存在，检测系统主题
+                var themeVariant = ActualThemeVariant;
+                _isDarkTheme = themeVariant == ThemeVariant.Dark;
+            }
         }
         catch
         {
@@ -485,6 +495,26 @@ public partial class MainWindow : Window
         _isDarkTheme = !_isDarkTheme;
         ApplyTheme();
         UpdateThemeToggleIcon();
+        
+        // 保存主题设置
+        SaveThemeConfiguration();
+    }
+    
+    /// <summary>
+    /// 保存主题配置
+    /// </summary>
+    private async void SaveThemeConfiguration()
+    {
+        try
+        {
+            var config = await ConfigManager.LoadConfigAsync();
+            config.IsDarkTheme = _isDarkTheme;
+            await ConfigManager.SaveConfigAsync(config);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"保存主题配置失败: {ex.Message}");
+        }
     }
     
     /// <summary>

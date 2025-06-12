@@ -16,6 +16,8 @@ namespace AvaRoomAssign.Models
         private readonly string _cookie;
         private readonly int _requestIntervalMs;
         private const int SelectionWindowSeconds = 10;
+        private const int MaxRetryAttempts = 3; // 重试次数
+        private const int RetryDelayMs = 200; // 重试间隔（毫秒）
 
         public HttpSelector(
             string applierName,
@@ -35,42 +37,245 @@ namespace AvaRoomAssign.Models
             _requestIntervalMs = requestIntervalMs;
         }
 
+        /// <summary>
+        /// 通用重试机制，用于处理网络波动
+        /// </summary>
+        /// <typeparam name="T">返回值类型</typeparam>
+        /// <param name="operation">要执行的异步操作</param>
+        /// <param name="operationName">操作名称，用于日志输出</param>
+        /// <param name="maxAttempts">最大重试次数</param>
+        /// <returns>操作结果</returns>
+        private async Task<T?> ExecuteWithRetryAsync<T>(
+            Func<Task<T?>> operation, 
+            string operationName, 
+            int maxAttempts = MaxRetryAttempts) where T : class
+        {
+            Exception? lastException = null;
+            
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    if (_cancellationToken.IsCancellationRequested)
+                        return null;
+
+                    var result = await operation();
+                    if (result != null)
+                    {
+                        if (attempt > 1)
+                        {
+                            Console.WriteLine($"✅ {operationName} 在第 {attempt} 次尝试后成功");
+                        }
+                        return result;
+                    }
+                    
+                    // 结果为空但没有异常，代表请求失败，继续重试
+                    if (attempt == maxAttempts)
+                    {
+                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后仍无结果");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败，{RetryDelayMs}ms后重试...");
+                        try
+                        {
+                            await Task.Delay(RetryDelayMs, _cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Console.WriteLine("重试等待被取消，流程终止");
+                            return null;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    
+                    if (attempt < maxAttempts)
+                    {
+                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
+                        try
+                        {
+                            await Task.Delay(RetryDelayMs, _cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Console.WriteLine("重试等待被取消，流程终止");
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 布尔值类型的重试机制
+        /// </summary>
+        /// <param name="operation">要执行的异步操作</param>
+        /// <param name="operationName">操作名称，用于日志输出</param>
+        /// <param name="maxAttempts">最大重试次数</param>
+        /// <returns>操作结果</returns>
+        private async Task<bool> ExecuteWithRetryAsync(
+            Func<Task<bool>> operation, 
+            string operationName, 
+            int maxAttempts = MaxRetryAttempts)
+        {
+            Exception? lastException = null;
+            
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    if (_cancellationToken.IsCancellationRequested)
+                        return false;
+
+                    var result = await operation();
+                    if (result)
+                    {
+                        if (attempt > 1)
+                        {
+                            Console.WriteLine($"✅ {operationName} 在第 {attempt} 次尝试后成功");
+                        }
+                        return true;
+                    }
+                    
+                    // 结果为false，继续重试
+                    if (attempt < maxAttempts)
+                    {
+                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试返回false，{RetryDelayMs}ms后重试...");
+                        try
+                        {
+                            await Task.Delay(RetryDelayMs, _cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Console.WriteLine("重试等待被取消，流程终止");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后仍返回false");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    
+                    if (attempt < maxAttempts)
+                    {
+                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
+                        try
+                        {
+                            await Task.Delay(RetryDelayMs, _cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Console.WriteLine("重试等待被取消，流程终止");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
+                    }
+                }
+            }
+            
+            return false;
+        }
+
         public async Task RunAsync()
         {
-            using var client = CreateHttpClient(_cookie);
-
-            var applierId = await GetApplierIdAsync(client);
-            if (applierId == null)
-                return;
-
-            WaitForStartTime();
-            Console.WriteLine("发包选房开始！");
-
-            var anySuccess = false;
-            foreach (var condition in _conditions)
+            try
             {
-                Console.WriteLine($"尝试志愿: {condition}");
-                var roomId = await FindMatchingRoomIdAsync(client, applierId, condition);
-                if (roomId == null)
+                using var client = CreateHttpClient(_cookie);
+
+                var applierId = await GetApplierIdAsync(client);
+                if (applierId == null)
                 {
-                    Console.WriteLine($"未找到符合条件的房源: {condition.CommunityName}");
-                    continue;
+                    Console.WriteLine("获取申请人ID失败，流程终止");
+                    return;
                 }
 
-                Console.WriteLine($"找到房源ID: {roomId}，开始发包");
-                var success = await TrySelectRoomAsync(client, applierId, roomId);
-                if (success)
+                // 检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine($"志愿 {condition.CommunityName} 发包选房成功！");
-                    anySuccess = true;
-                    break;
+                    Console.WriteLine("操作已取消，流程终止");
+                    return;
                 }
-                
-                Console.WriteLine($"志愿 {condition.CommunityName} 发包未成功，继续下一个志愿");
+
+                var waitResult = await WaitForStartTimeAsync();
+                if (!waitResult)
+                {
+                    Console.WriteLine("等待开始时间被取消，流程终止");
+                    return;
+                }
+
+                // 再次检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    Console.WriteLine("操作已取消，流程终止");
+                    return;
+                }
+
+                Console.WriteLine("发包选房开始！");
+
+                var anySuccess = false;
+                foreach (var condition in _conditions)
+                {
+                    // 在每个志愿开始前检查取消状态
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        Console.WriteLine("操作已取消，流程终止");
+                        return;
+                    }
+
+                    Console.WriteLine($"尝试志愿: {condition}");
+                    var roomId = await FindMatchingRoomIdAsync(client, applierId, condition);
+                    if (roomId == null)
+                    {
+                        Console.WriteLine($"未找到符合条件的房源: {condition.CommunityName}");
+                        continue;
+                    }
+
+                    // 检查是否已被取消
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        Console.WriteLine("操作已取消，流程终止");
+                        return;
+                    }
+
+                    Console.WriteLine($"找到房源ID: {roomId}，开始发包");
+                    var success = await TrySelectRoomAsync(client, applierId, roomId);
+                    if (success)
+                    {
+                        Console.WriteLine($"志愿 {condition.CommunityName} 发包选房成功！");
+                        anySuccess = true;
+                        break;
+                    }
+                    
+                    Console.WriteLine($"志愿 {condition.CommunityName} 发包未成功，继续下一个志愿");
+                }
+
+                if (!anySuccess)
+                    Console.WriteLine("所有志愿均未选中，流程结束");
             }
-
-            if (!anySuccess)
-                Console.WriteLine("所有志愿均未选中，流程结束");
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("操作已取消，流程终止");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"运行过程中发生错误: {ex.Message}");
+            }
         }
 
         public void Stop()
@@ -82,12 +287,14 @@ namespace AvaRoomAssign.Models
         {
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={cookie}");
+            // 设置超时时间，避免长时间等待
+            client.Timeout = TimeSpan.FromSeconds(30);
             return client;
         }
 
         private async Task<string?> GetApplierIdAsync(HttpClient client)
         {
-            try
+            return await ExecuteWithRetryAsync(async () =>
             {
                 var html = await client.GetStringAsync("https://ent.qpgzf.cn/RoomAssign/Index", _cancellationToken);
                 var doc = new HtmlDocument();
@@ -102,14 +309,47 @@ namespace AvaRoomAssign.Models
 
                 Console.WriteLine($"未找到申请人 {_applierName} 对应的 ID");
                 return null;
-            }
-            catch (Exception ex)
+            }, "获取申请人ID");
+        }
+
+        /// <summary>
+        /// 异步等待开始时间，支持取消操作
+        /// </summary>
+        /// <returns>true表示正常到达开始时间，false表示被取消</returns>
+        private async Task<bool> WaitForStartTimeAsync()
+        {
+            try
             {
-                Console.WriteLine($"获取申请人ID异常: {ex.Message}");
-                return null;
+                while (!_cancellationToken.IsCancellationRequested)
+                {
+                    var now = DateTime.Now;
+                    var diff = _startTime - now;
+                    if (diff.TotalSeconds <= 1)
+                    {
+                        Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
+                        return true;
+                    }
+
+                    Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
+                    
+                    // 使用异步延迟，支持取消令牌
+                    await Task.Delay(1000, _cancellationToken);
+                }
+                
+                Console.WriteLine("等待开始时间被用户取消");
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("等待开始时间被用户取消");
+                return false;
             }
         }
 
+        /// <summary>
+        /// 同步版本的等待方法（保留兼容性，但已废弃）
+        /// </summary>
+        [Obsolete("请使用WaitForStartTimeAsync方法")]
         private void WaitForStartTime()
         {
             while (!_cancellationToken.IsCancellationRequested)
@@ -130,18 +370,19 @@ namespace AvaRoomAssign.Models
         private async Task<string?> FindMatchingRoomIdAsync(HttpClient client, string applyerId,
             HouseCondition condition)
         {
-            const string url = "https://ent.qpgzf.cn/RoomAssign/SelectRoom";
-            var data = new Dictionary<string, string>
+            return await ExecuteWithRetryAsync(async () =>
             {
-                ["ApplyIDs"] = applyerId,
-                ["IsApplyTalent"] = "0",
-                ["type"] = "1",
-                ["SearchEntity._PageSize"] = "500",
-                ["SearchEntity._PageIndex"] = "1",
-                ["SearchEntity._CommonSearchCondition"] = condition.CommunityName
-            };
-            try
-            {
+                const string url = "https://ent.qpgzf.cn/RoomAssign/SelectRoom";
+                var data = new Dictionary<string, string>
+                {
+                    ["ApplyIDs"] = applyerId,
+                    ["IsApplyTalent"] = "0",
+                    ["type"] = "1",
+                    ["SearchEntity._PageSize"] = "500",
+                    ["SearchEntity._PageIndex"] = "1",
+                    ["SearchEntity._CommonSearchCondition"] = condition.CommunityName
+                };
+
                 var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
                 var html = await response.Content.ReadAsStringAsync(_cancellationToken);
 
@@ -199,12 +440,7 @@ namespace AvaRoomAssign.Models
                 }
 
                 return null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"获取房间ID异常：{ex.Message}");
-                return null;
-            }
+            }, $"查找房源ID - {condition.CommunityName}");
         }
 
         private async Task<bool> TrySelectRoomAsync(HttpClient client, string applyerId, string roomId)
@@ -214,10 +450,23 @@ namespace AvaRoomAssign.Models
 
             while (DateTime.Now < endTime && !_cancellationToken.IsCancellationRequested)
             {
-                var success = await SelectOnceAsync(client, applyerId, roomId, url);
+                var success = await ExecuteWithRetryAsync(async () =>
+                {
+                    return await SelectOnceAsync(client, applyerId, roomId, url);
+                }, $"发包选房 - 房源ID:{roomId}");
+
                 if (success)
                     return true;
-                await Task.Delay(_requestIntervalMs, _cancellationToken);
+                
+                try
+                {
+                    await Task.Delay(_requestIntervalMs, _cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("请求间隔等待被取消，流程终止");
+                    return false;
+                }
             }
 
             return false;
@@ -226,20 +475,10 @@ namespace AvaRoomAssign.Models
         private async Task<bool> SelectOnceAsync(HttpClient client, string applyerId, string roomId, string url)
         {
             var data = new Dictionary<string, string> { ["ApplyIDs"] = applyerId, ["roomID"] = roomId };
-            try
-            {
-                var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
-                var result = await response.Content.ReadAsStringAsync(_cancellationToken);
-                Console.WriteLine(result);
-                return result.Contains("成功");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"发包请求错误：{ex.Message}");
-                return false;
-            }
+            var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
+            var result = await response.Content.ReadAsStringAsync(_cancellationToken);
+            Console.WriteLine(result);
+            return result.Contains("成功");
         }
-
-        
     }
 } 
