@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<linker>
+  <!-- 保留整个应用程序集 -->
+  <assembly fullname="AvaRoomAssign" preserve="all" />
+  
+  <!-- 保留Model类的所有属性 -->
+  <assembly fullname="AvaRoomAssign">
+    <type fullname="AvaRoomAssign.Models.HouseCondition" preserve="all" />
+    <type fullname="AvaRoomAssign.Models.AppConfig" preserve="all" />
+    <type fullname="AvaRoomAssign.Models.HouseConditionData" preserve="all" />
+    <type fullname="AvaRoomAssign.Models.HouseType" preserve="all" />
+    <type fullname="AvaRoomAssign.Models.ConfigJsonContext" preserve="all" />
+    <type fullname="AvaRoomAssign.ViewModels.MainWindowViewModel" preserve="all" />
+  </assembly>
+  
+  <!-- 保留System.ComponentModel的必要部分 -->
+  <assembly fullname="System.ComponentModel">
+    <type fullname="System.ComponentModel.INotifyPropertyChanged" preserve="all" />
+    <type fullname="System.ComponentModel.PropertyChangedEventArgs" preserve="all" />
+    <type fullname="System.ComponentModel.PropertyChangedEventHandler" preserve="all" />
+  </assembly>
+  
+  <!-- 保留集合类型 -->
+  <assembly fullname="System.Collections">
+    <type fullname="System.Collections.ObjectModel.ObservableCollection`1" preserve="all" />
+    <type fullname="System.Collections.Specialized.INotifyCollectionChanged" preserve="all" />
+  </assembly>
+  
+  <!-- 保留JSON序列化相关 -->
+  <assembly fullname="System.Text.Json">
+    <type fullname="System.Text.Json.JsonSerializer" preserve="all" />
+    <type fullname="System.Text.Json.JsonSerializerContext" preserve="all" />
+    <type fullname="System.Text.Json.Serialization.JsonSerializableAttribute" preserve="all" />
+  </assembly>
+</linker> 

@@ -11,6 +11,13 @@
         <Authors>Hp</Authors>
         <Description>基于Avalonia的自动化抢租房软件</Description>
         <ApplicationIcon>Assets\house.ico</ApplicationIcon>
+        <!-- AOT 优化配置 -->
+        <TrimMode>link</TrimMode>
+        <TrimmerDefaultAction>link</TrimmerDefaultAction>
+        <!-- 禁用一些可能有问题的优化 -->
+        <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+        <!-- 保留必要的类型信息 -->
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,5 +43,17 @@
         <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="135.0.7049.9500" />
         <PackageReference Include="Selenium.WebDriver.MSEdgeDriver" Version="135.0.3179.73" />
         <PackageReference Include="SeleniumExtras.WaitHelpers" Version="1.0.2" />
+    </ItemGroup>
+
+    <!-- AOT 保留类型配置 -->
+    <ItemGroup>
+        <TrimmerRootAssembly Include="AvaRoomAssign" />
+        <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" Condition="Exists('ILLink.Descriptors.xml')" />
+    </ItemGroup>
+
+    <!-- 保留必要的程序集 -->
+    <ItemGroup>
+        <RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="false" />
+        <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="false" />
     </ItemGroup>
 </Project>

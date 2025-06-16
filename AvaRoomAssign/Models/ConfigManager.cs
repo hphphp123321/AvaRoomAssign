@@ -13,12 +13,109 @@ namespace AvaRoomAssign.Models
     [JsonSerializable(typeof(AppConfig))]
     [JsonSerializable(typeof(HouseConditionData))]
     [JsonSerializable(typeof(List<HouseConditionData>))]
+    [JsonSerializable(typeof(HouseCondition))]
+    [JsonSerializable(typeof(List<HouseCondition>))]
+    [JsonSerializable(typeof(HouseType))]
+    [JsonSerializable(typeof(ConditionRoomIdMapping))]
+    [JsonSerializable(typeof(List<ConditionRoomIdMapping>))]
+    [JsonSerializable(typeof(List<string>))]
+    [JsonSerializable(typeof(string))]
+    [JsonSerializable(typeof(int))]
+    [JsonSerializable(typeof(bool))]
+    [JsonSerializable(typeof(double))]
     [JsonSourceGenerationOptions(
         WriteIndented = true,
         PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
         GenerationMode = JsonSourceGenerationMode.Default)]
     public partial class ConfigJsonContext : JsonSerializerContext
     {
+    }
+
+    /// <summary>
+    /// 社区条件与房间ID映射
+    /// </summary>
+    public class ConditionRoomIdMapping
+    {
+        /// <summary>
+        /// 社区条件唯一标识（基于社区名称+房型+幢号等生成）
+        /// </summary>
+        public string ConditionKey { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 社区名称
+        /// </summary>
+        public string CommunityName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 房型
+        /// </summary>
+        public int HouseType { get; set; } = 0;
+
+        /// <summary>
+        /// 幢号（0表示不限制）
+        /// </summary>
+        public int BuildingNo { get; set; } = 0;
+
+        /// <summary>
+        /// 层数范围
+        /// </summary>
+        public string FloorRange { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 最高价格
+        /// </summary>
+        public int MaxPrice { get; set; } = 0;
+
+        /// <summary>
+        /// 最小面积
+        /// </summary>
+        public int LeastArea { get; set; } = 0;
+
+        /// <summary>
+        /// 匹配的房间ID列表
+        /// </summary>
+        public List<string> RoomIds { get; set; } = new();
+
+        /// <summary>
+        /// 获取时间
+        /// </summary>
+        public DateTime LastUpdated { get; set; } = DateTime.Now;
+
+        /// <summary>
+        /// 从HouseCondition生成ConditionRoomIdMapping
+        /// </summary>
+        public static ConditionRoomIdMapping FromHouseCondition(HouseCondition condition)
+        {
+            var key = GenerateConditionKey(condition);
+            return new ConditionRoomIdMapping
+            {
+                ConditionKey = key,
+                CommunityName = condition.CommunityName,
+                HouseType = (int)condition.HouseType,
+                BuildingNo = condition.BuildingNo,
+                FloorRange = condition.FloorRange,
+                MaxPrice = condition.MaxPrice,
+                LeastArea = condition.LeastArea,
+                RoomIds = new List<string>(),
+                LastUpdated = DateTime.Now
+            };
+        }
+
+        /// <summary>
+        /// 生成条件的唯一键
+        /// </summary>
+        public static string GenerateConditionKey(HouseCondition condition)
+        {
+            return $"{condition.CommunityName}_{(int)condition.HouseType}_{condition.BuildingNo}_{condition.FloorRange}_{condition.MaxPrice}_{condition.LeastArea}";
+        }
+
+        /// <summary>
+        /// 检查条件是否匹配
+        /// </summary>
+        public bool MatchesCondition(HouseCondition condition)
+        {
+            return ConditionKey == GenerateConditionKey(condition);
+        }
     }
 
     /// <summary>
@@ -95,6 +192,11 @@ namespace AvaRoomAssign.Models
         /// 日志区域高度
         /// </summary>
         public double LogAreaHeight { get; set; } = 260;
+
+        /// <summary>
+        /// 房间ID映射列表
+        /// </summary>
+        public List<ConditionRoomIdMapping> RoomIdMappings { get; set; } = new();
     }
 
     /// <summary>
@@ -142,7 +244,7 @@ namespace AvaRoomAssign.Models
     }
 
     /// <summary>
-    /// 配置管理器
+    /// 配置管理器 - 支持AOT编译的JSON序列化
     /// </summary>
     public static class ConfigManager
     {
@@ -161,6 +263,20 @@ namespace AvaRoomAssign.Models
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             TypeInfoResolver = ConfigJsonContext.Default
         };
+
+        // 配置缓存，避免短时间内重复加载
+        private static AppConfig? _cachedConfig = null;
+        private static DateTime _lastLoadTime = DateTime.MinValue;
+        private static readonly TimeSpan CacheTimeout = TimeSpan.FromSeconds(2); // 2秒内的重复加载使用缓存
+
+        /// <summary>
+        /// 清除配置缓存
+        /// </summary>
+        public static void ClearCache()
+        {
+            _cachedConfig = null;
+            _lastLoadTime = DateTime.MinValue;
+        }
 
         /// <summary>
         /// 保存配置到文件
@@ -181,11 +297,15 @@ namespace AvaRoomAssign.Models
                 var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                 await File.WriteAllTextAsync(ConfigPath, json);
                 
-                Console.WriteLine("✅ 配置已保存");
+                // 更新缓存
+                _cachedConfig = config;
+                _lastLoadTime = DateTime.Now;
+                
+                LogManager.Success("配置已保存");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 保存配置失败: {ex.Message}");
+                LogManager.Error("保存配置失败", ex);
                 
                 // 尝试写入到备用位置（应用程序目录）
                 try
@@ -193,11 +313,16 @@ namespace AvaRoomAssign.Models
                     var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
                     var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                     await File.WriteAllTextAsync(fallbackPath, json);
-                    Console.WriteLine($"✅ 配置已保存到备用位置: {fallbackPath}");
+                    
+                    // 更新缓存
+                    _cachedConfig = config;
+                    _lastLoadTime = DateTime.Now;
+                    
+                    LogManager.Success($"配置已保存到备用位置: {fallbackPath}");
                 }
                 catch (Exception fallbackEx)
                 {
-                    Console.WriteLine($"❌ 备用保存也失败: {fallbackEx.Message}");
+                    LogManager.Error("备用保存也失败", fallbackEx);
                 }
             }
         }
@@ -208,8 +333,16 @@ namespace AvaRoomAssign.Models
         /// <returns>加载的配置，如果失败则返回默认配置</returns>
         public static async Task<AppConfig> LoadConfigAsync()
         {
+            var now = DateTime.Now; // 将变量声明移到方法开头
+            
             try
             {
+                // 检查缓存是否有效，避免短时间内重复加载和输出日志
+                if (_cachedConfig != null && (now - _lastLoadTime) < CacheTimeout)
+                {
+                    return _cachedConfig;
+                }
+
                 // 首先尝试从用户目录加载
                 if (File.Exists(ConfigPath))
                 {
@@ -218,7 +351,14 @@ namespace AvaRoomAssign.Models
                     
                     if (config != null)
                     {
-                        Console.WriteLine($"✅ 配置已从用户目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        // 只在不是缓存加载时输出日志
+                        if (_cachedConfig == null)
+                        {
+                            LogManager.Success($"配置已从用户目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        }
+                        
+                        _cachedConfig = config;
+                        _lastLoadTime = now;
                         return config;
                     }
                 }
@@ -232,18 +372,31 @@ namespace AvaRoomAssign.Models
                     
                     if (config != null)
                     {
-                        Console.WriteLine($"✅ 配置已从应用程序目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        // 只在不是缓存加载时输出日志
+                        if (_cachedConfig == null)
+                        {
+                            LogManager.Success($"配置已从应用程序目录加载，包含 {config.CommunityConditions.Count} 个社区条件");
+                        }
+                        
+                        _cachedConfig = config;
+                        _lastLoadTime = now;
                         return config;
                     }
                 }
 
-                Console.WriteLine("🔍 配置文件不存在，将创建默认配置");
-                return CreateDefaultConfig();
+                LogManager.Info("配置文件不存在，将创建默认配置");
+                var defaultConfig = CreateDefaultConfig();
+                _cachedConfig = defaultConfig;
+                _lastLoadTime = now;
+                return defaultConfig;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 加载配置失败: {ex.Message}，使用默认配置");
-                return CreateDefaultConfig();
+                LogManager.Error("加载配置失败，使用默认配置", ex);
+                var defaultConfig = CreateDefaultConfig();
+                _cachedConfig = defaultConfig;
+                _lastLoadTime = now;
+                return defaultConfig;
             }
         }
 
@@ -265,10 +418,14 @@ namespace AvaRoomAssign.Models
                 // 使用源生成器序列化
                 var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                 File.WriteAllText(ConfigPath, json);
+                
+                // 更新缓存
+                _cachedConfig = config;
+                _lastLoadTime = DateTime.Now;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 快速保存配置失败: {ex.Message}");
+                LogManager.Error("快速保存配置失败", ex);
                 
                 // 尝试写入到备用位置
                 try
@@ -276,11 +433,16 @@ namespace AvaRoomAssign.Models
                     var fallbackPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigFileName);
                     var json = JsonSerializer.Serialize(config, ConfigJsonContext.Default.AppConfig);
                     File.WriteAllText(fallbackPath, json);
-                    Console.WriteLine($"✅ 配置已保存到备用位置: {fallbackPath}");
+                    
+                    // 更新缓存
+                    _cachedConfig = config;
+                    _lastLoadTime = DateTime.Now;
+                    
+                    LogManager.Success($"配置已保存到备用位置: {fallbackPath}");
                 }
                 catch (Exception fallbackEx)
                 {
-                    Console.WriteLine($"❌ 备用保存也失败: {fallbackEx.Message}");
+                    LogManager.Error("备用保存也失败", fallbackEx);
                 }
             }
         }
@@ -323,7 +485,7 @@ namespace AvaRoomAssign.Models
                 if (File.Exists(ConfigPath))
                 {
                     File.Delete(ConfigPath);
-                    Console.WriteLine("✅ 配置文件已删除");
+                    LogManager.Success("配置文件已删除");
                 }
                 
                 // 删除备用配置文件
@@ -331,12 +493,12 @@ namespace AvaRoomAssign.Models
                 if (File.Exists(fallbackPath))
                 {
                     File.Delete(fallbackPath);
-                    Console.WriteLine("✅ 备用配置文件已删除");
+                    LogManager.Success("备用配置文件已删除");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ 删除配置文件失败: {ex.Message}");
+                LogManager.Error("删除配置文件失败", ex);
             }
         }
 

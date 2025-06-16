@@ -21,11 +21,14 @@ public partial class MainWindow : Window
     private const double LOG_MAX_HEIGHT = 600; // 日志区域最大高度
     private const double HEADER_HEIGHT = 100; // 标题栏高度
     private const double FOOTER_HEIGHT = 80; // 按钮区域高度
+    private const double RESPONSIVE_BREAKPOINT = 1200; // 响应式布局切换阈值
     
     // 拖拽相关变量
     private bool _isResizing = false; // 是否正在调整大小
     private double _initialHeight = 0; // 开始拖拽时的高度
     private Avalonia.Point _initialMousePosition; // 开始拖拽时的鼠标位置
+    
+    private AppConfig? _cachedConfig = null; // 缓存的配置对象
     
     public MainWindow()
     {
@@ -61,6 +64,9 @@ public partial class MainWindow : Window
     {
         // 设置拖拽功能
         SetupResizeHandle();
+        
+        // 初始化响应式布局
+        UpdateResponsiveLayout();
     }
     
     /// <summary>
@@ -136,12 +142,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnWindowSizeChanged(object? sender, SizeChangedEventArgs e)
     {
+        // 更新响应式布局
+        UpdateResponsiveLayout();
+        
         // 手动拖拽模式下，窗口大小变化时不自动调整日志区域高度
         // 用户可以通过拖拽手柄自行调整
     }
     
-
-
     /// <summary>
     /// ViewModel属性变化事件处理
     /// </summary>
@@ -173,8 +180,9 @@ public partial class MainWindow : Window
             // 先尝试从配置文件加载主题设置
             if (ConfigManager.ConfigExists())
             {
-                var config = await ConfigManager.LoadConfigAsync();
-                _isDarkTheme = config.IsDarkTheme;
+                // 使用缓存的配置，避免重复加载
+                _cachedConfig ??= await ConfigManager.LoadConfigAsync();
+                _isDarkTheme = _cachedConfig.IsDarkTheme;
             }
             else
             {
@@ -201,42 +209,42 @@ public partial class MainWindow : Window
         if (_isDarkTheme)
         {
             // 应用深色主题
-            this.Resources["ThemeBackground"] = new SolidColorBrush(Color.Parse("#0D1117"));
-            this.Resources["ThemeCardBackground"] = new SolidColorBrush(Color.Parse("#161B22"));
-            this.Resources["ThemeTextPrimary"] = new SolidColorBrush(Color.Parse("#F0F6FC"));
-            this.Resources["ThemeTextSecondary"] = new SolidColorBrush(Color.Parse("#8B949E"));
-            this.Resources["ThemeBorder"] = new SolidColorBrush(Color.Parse("#30363D"));
-            this.Resources["ThemeAccent"] = new SolidColorBrush(Color.Parse("#58A6FF"));
-            this.Resources["ThemeAccentHover"] = new SolidColorBrush(Color.Parse("#79C0FF"));
-            this.Resources["ThemeSuccess"] = new SolidColorBrush(Color.Parse("#3FB950"));
-            this.Resources["ThemeWarning"] = new SolidColorBrush(Color.Parse("#D29922"));
-            this.Resources["ThemeDanger"] = new SolidColorBrush(Color.Parse("#F85149"));
-            this.Resources["ThemeLogBackground"] = new SolidColorBrush(Color.Parse("#0D1117"));
-            this.Resources["ThemeLogText"] = new SolidColorBrush(Color.Parse("#7EE787"));
+            this.Resources["ThemeBackground"] = new SolidColorBrush(Color.Parse("#0F1419"));
+            this.Resources["ThemeCardBackground"] = new SolidColorBrush(Color.Parse("#1A202C"));
+            this.Resources["ThemeTextPrimary"] = new SolidColorBrush(Color.Parse("#F7FAFC"));
+            this.Resources["ThemeTextSecondary"] = new SolidColorBrush(Color.Parse("#A0AEC0"));
+            this.Resources["ThemeBorder"] = new SolidColorBrush(Color.Parse("#2D3748"));
+            this.Resources["ThemeAccent"] = new SolidColorBrush(Color.Parse("#63B3ED"));
+            this.Resources["ThemeAccentHover"] = new SolidColorBrush(Color.Parse("#90CDF4"));
+            this.Resources["ThemeSuccess"] = new SolidColorBrush(Color.Parse("#68D391"));
+            this.Resources["ThemeWarning"] = new SolidColorBrush(Color.Parse("#F6AD55"));
+            this.Resources["ThemeDanger"] = new SolidColorBrush(Color.Parse("#FC8181"));
+            this.Resources["ThemeLogBackground"] = new SolidColorBrush(Color.Parse("#171923"));
+            this.Resources["ThemeLogText"] = new SolidColorBrush(Color.Parse("#9AE6B4"));
             // 深色主题表格相关颜色
-            this.Resources["ThemeTableAlternating"] = new SolidColorBrush(Color.Parse("#21262D"));
-            this.Resources["ThemeTableHover"] = new SolidColorBrush(Color.Parse("#30363D"));
-            this.Resources["ThemeTableSelected"] = new SolidColorBrush(Color.Parse("#1F6FEB"));
+            this.Resources["ThemeTableAlternating"] = new SolidColorBrush(Color.Parse("#2D3748"));
+            this.Resources["ThemeTableHover"] = new SolidColorBrush(Color.Parse("#4A5568"));
+            this.Resources["ThemeTableSelected"] = new SolidColorBrush(Color.Parse("#3182CE"));
         }
         else
         {
             // 应用浅色主题
-            this.Resources["ThemeBackground"] = new SolidColorBrush(Color.Parse("#F8F9FA"));
+            this.Resources["ThemeBackground"] = new SolidColorBrush(Color.Parse("#F7F9FC"));
             this.Resources["ThemeCardBackground"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-            this.Resources["ThemeTextPrimary"] = new SolidColorBrush(Color.Parse("#212529"));
-            this.Resources["ThemeTextSecondary"] = new SolidColorBrush(Color.Parse("#6C757D"));
-            this.Resources["ThemeBorder"] = new SolidColorBrush(Color.Parse("#DEE2E6"));
-            this.Resources["ThemeAccent"] = new SolidColorBrush(Color.Parse("#0D6EFD"));
-            this.Resources["ThemeAccentHover"] = new SolidColorBrush(Color.Parse("#0B5ED7"));
-            this.Resources["ThemeSuccess"] = new SolidColorBrush(Color.Parse("#198754"));
-            this.Resources["ThemeWarning"] = new SolidColorBrush(Color.Parse("#FFC107"));
-            this.Resources["ThemeDanger"] = new SolidColorBrush(Color.Parse("#DC3545"));
-            this.Resources["ThemeLogBackground"] = new SolidColorBrush(Color.Parse("#F8F9FA"));
-            this.Resources["ThemeLogText"] = new SolidColorBrush(Color.Parse("#198754"));
+            this.Resources["ThemeTextPrimary"] = new SolidColorBrush(Color.Parse("#1A202C"));
+            this.Resources["ThemeTextSecondary"] = new SolidColorBrush(Color.Parse("#718096"));
+            this.Resources["ThemeBorder"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+            this.Resources["ThemeAccent"] = new SolidColorBrush(Color.Parse("#4299E1"));
+            this.Resources["ThemeAccentHover"] = new SolidColorBrush(Color.Parse("#3182CE"));
+            this.Resources["ThemeSuccess"] = new SolidColorBrush(Color.Parse("#48BB78"));
+            this.Resources["ThemeWarning"] = new SolidColorBrush(Color.Parse("#ED8936"));
+            this.Resources["ThemeDanger"] = new SolidColorBrush(Color.Parse("#F56565"));
+            this.Resources["ThemeLogBackground"] = new SolidColorBrush(Color.Parse("#F7FAFC"));
+            this.Resources["ThemeLogText"] = new SolidColorBrush(Color.Parse("#38A169"));
             // 浅色主题表格相关颜色
-            this.Resources["ThemeTableAlternating"] = new SolidColorBrush(Color.Parse("#F8F9FA"));
-            this.Resources["ThemeTableHover"] = new SolidColorBrush(Color.Parse("#E3F2FD"));
-            this.Resources["ThemeTableSelected"] = new SolidColorBrush(Color.Parse("#BBDEFB"));
+            this.Resources["ThemeTableAlternating"] = new SolidColorBrush(Color.Parse("#F7FAFC"));
+            this.Resources["ThemeTableHover"] = new SolidColorBrush(Color.Parse("#EBF8FF"));
+            this.Resources["ThemeTableSelected"] = new SolidColorBrush(Color.Parse("#BEE3F8"));
         }
         
         // 更新渐变背景
@@ -256,13 +264,13 @@ public partial class MainWindow : Window
             
             if (_isDarkTheme)
             {
-                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#161B22"), 0));
-                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#0D1117"), 1));
+                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#1A202C"), 0));
+                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#0F1419"), 1));
             }
             else
             {
                 headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#FFFFFF"), 0));
-                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#F8F9FA"), 1));
+                headerGradient.GradientStops.Add(new GradientStop(Color.Parse("#F7F9FC"), 1));
             }
             
             headerBorder.Background = headerGradient;
@@ -276,13 +284,13 @@ public partial class MainWindow : Window
             
             if (_isDarkTheme)
             {
-                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#161B22"), 0));
-                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#0D1117"), 1));
+                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#1A202C"), 0));
+                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#0F1419"), 1));
             }
             else
             {
                 footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#FFFFFF"), 0));
-                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#F8F9FA"), 1));
+                footerGradient.GradientStops.Add(new GradientStop(Color.Parse("#F7F9FC"), 1));
             }
             
             footerBorder.Background = footerGradient;
@@ -334,7 +342,6 @@ public partial class MainWindow : Window
         
         _isLogExpanded = false;
     }
-    
     
     /// <summary>
     /// 获取配置区域的实际高度
@@ -460,26 +467,91 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
+    /// 切换面板折叠状态
+    /// </summary>
+    /// <param name="panelName">面板名称</param>
+    private void TogglePanel(string panelName)
+    {
+        // 获取当前显示的布局
+        var singleColumnLayout = this.FindControl<StackPanel>("SingleColumnLayout");
+        var doubleColumnLayout = this.FindControl<Grid>("DoubleColumnLayout");
+        
+        bool isDoubleLayoutVisible = doubleColumnLayout?.IsVisible == true;
+        
+        if (isDoubleLayoutVisible)
+        {
+            // 双列布局
+            var content = this.FindControl<StackPanel>($"{panelName}Content");
+            var icon = this.FindControl<TextBlock>($"{panelName}Icon");
+            
+            if (content != null && icon != null)
+            {
+                bool isCurrentlyVisible = content.IsVisible;
+                content.IsVisible = !isCurrentlyVisible;
+                icon.Text = isCurrentlyVisible ? "▶" : "▼";
+                
+                // 同步到单列布局
+                var singleContent = this.FindControl<StackPanel>($"{panelName}ContentSingle");
+                var singleIcon = this.FindControl<TextBlock>($"{panelName}IconSingle");
+                if (singleContent != null) singleContent.IsVisible = content.IsVisible;
+                if (singleIcon != null) singleIcon.Text = icon.Text;
+            }
+        }
+        else
+        {
+            // 单列布局
+            var content = this.FindControl<StackPanel>($"{panelName}ContentSingle");
+            var icon = this.FindControl<TextBlock>($"{panelName}IconSingle");
+            
+            if (content != null && icon != null)
+            {
+                bool isCurrentlyVisible = content.IsVisible;
+                content.IsVisible = !isCurrentlyVisible;
+                icon.Text = isCurrentlyVisible ? "▶" : "▼";
+                
+                // 同步到双列布局
+                var doubleContent = this.FindControl<StackPanel>($"{panelName}Content");
+                var doubleIcon = this.FindControl<TextBlock>($"{panelName}Icon");
+                if (doubleContent != null) doubleContent.IsVisible = content.IsVisible;
+                if (doubleIcon != null) doubleIcon.Text = icon.Text;
+            }
+        }
+    }
+    
+    /// <summary>
     /// 设置面板折叠状态
     /// </summary>
     /// <param name="panelName">面板名称</param>
     /// <param name="isCollapsed">是否折叠</param>
     private void SetPanelCollapsed(string panelName, bool isCollapsed)
     {
-        var content = this.FindControl<StackPanel>($"{panelName}Content");
-        var icon = this.FindControl<TextBlock>($"{panelName}Icon");
+        // 双列布局
+        var doubleContent = this.FindControl<StackPanel>($"{panelName}Content");
+        var doubleIcon = this.FindControl<TextBlock>($"{panelName}Icon");
         
-        if (content != null)
+        if (doubleContent != null)
         {
-            content.IsVisible = !isCollapsed;
+            doubleContent.IsVisible = !isCollapsed;
         }
         
-        if (icon != null)
+        if (doubleIcon != null)
         {
-            icon.Text = isCollapsed ? "▶" : "▼";
+            doubleIcon.Text = isCollapsed ? "▶" : "▼";
         }
         
-        // 手动拖拽模式下不自动更新日志区域高度
+        // 单列布局
+        var singleContent = this.FindControl<StackPanel>($"{panelName}ContentSingle");
+        var singleIcon = this.FindControl<TextBlock>($"{panelName}IconSingle");
+        
+        if (singleContent != null)
+        {
+            singleContent.IsVisible = !isCollapsed;
+        }
+        
+        if (singleIcon != null)
+        {
+            singleIcon.Text = isCollapsed ? "▶" : "▼";
+        }
     }
     
     /// <summary>
@@ -504,9 +576,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var config = await ConfigManager.LoadConfigAsync();
-            config.IsDarkTheme = _isDarkTheme;
-            await ConfigManager.SaveConfigAsync(config);
+            // 使用缓存的配置，避免重复加载
+            _cachedConfig ??= await ConfigManager.LoadConfigAsync();
+            _cachedConfig.IsDarkTheme = _isDarkTheme;
+            await ConfigManager.SaveConfigAsync(_cachedConfig);
         }
         catch (Exception ex)
         {
@@ -555,21 +628,78 @@ public partial class MainWindow : Window
     }
     
     /// <summary>
-    /// 切换面板折叠状态
+    /// 更新响应式布局
     /// </summary>
-    /// <param name="panelName">面板名称</param>
-    private void TogglePanel(string panelName)
+    private void UpdateResponsiveLayout()
     {
-        var content = this.FindControl<StackPanel>($"{panelName}Content");
-        var icon = this.FindControl<TextBlock>($"{panelName}Icon");
+        var currentWidth = this.Width;
+        var singleColumnLayout = this.FindControl<StackPanel>("SingleColumnLayout");
+        var doubleColumnLayout = this.FindControl<Grid>("DoubleColumnLayout");
         
-        if (content != null && icon != null)
+        if (currentWidth >= RESPONSIVE_BREAKPOINT)
         {
-            bool isCurrentlyVisible = content.IsVisible;
-            content.IsVisible = !isCurrentlyVisible;
-            icon.Text = isCurrentlyVisible ? "▶" : "▼";
+            // 使用双列布局
+            if (singleColumnLayout != null) singleColumnLayout.IsVisible = false;
+            if (doubleColumnLayout != null) doubleColumnLayout.IsVisible = true;
             
-            // 手动拖拽模式下不自动更新日志区域高度
+            // 同步折叠状态从单列到双列
+            SyncCollapsibleStates(fromSingle: true);
+        }
+        else
+        {
+            // 使用单列布局
+            if (singleColumnLayout != null) singleColumnLayout.IsVisible = true;
+            if (doubleColumnLayout != null) doubleColumnLayout.IsVisible = false;
+            
+            // 同步折叠状态从双列到单列
+            SyncCollapsibleStates(fromSingle: false);
+        }
+    }
+    
+    /// <summary>
+    /// 同步单列和双列布局的折叠状态
+    /// </summary>
+    /// <param name="fromSingle">是否从单列同步到双列</param>
+    private void SyncCollapsibleStates(bool fromSingle)
+    {
+        var panels = new[] { "OperationMode", "Account", "Execution", "Community" };
+        
+        foreach (var panelName in panels)
+        {
+            if (fromSingle)
+            {
+                // 从单列同步到双列
+                var singleContent = this.FindControl<StackPanel>($"{panelName}ContentSingle");
+                var singleIcon = this.FindControl<TextBlock>($"{panelName}IconSingle");
+                var doubleContent = this.FindControl<StackPanel>($"{panelName}Content");
+                var doubleIcon = this.FindControl<TextBlock>($"{panelName}Icon");
+                
+                if (singleContent != null && doubleContent != null)
+                {
+                    doubleContent.IsVisible = singleContent.IsVisible;
+                }
+                if (singleIcon != null && doubleIcon != null)
+                {
+                    doubleIcon.Text = singleIcon.Text;
+                }
+            }
+            else
+            {
+                // 从双列同步到单列
+                var doubleContent = this.FindControl<StackPanel>($"{panelName}Content");
+                var doubleIcon = this.FindControl<TextBlock>($"{panelName}Icon");
+                var singleContent = this.FindControl<StackPanel>($"{panelName}ContentSingle");
+                var singleIcon = this.FindControl<TextBlock>($"{panelName}IconSingle");
+                
+                if (doubleContent != null && singleContent != null)
+                {
+                    singleContent.IsVisible = doubleContent.IsVisible;
+                }
+                if (doubleIcon != null && singleIcon != null)
+                {
+                    singleIcon.Text = doubleIcon.Text;
+                }
+            }
         }
     }
 }

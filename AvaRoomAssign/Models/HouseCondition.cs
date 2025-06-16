@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AvaRoomAssign.Models;
 
@@ -123,10 +124,10 @@ public class HouseCondition : INotifyPropertyChanged
 
     public string HouseTypeDescription
     {
-        get => _houseType.GetDescription();
+        get => GetHouseTypeDescription(_houseType);
         set
         {
-            var newType = EnumHelper.GetEnumValueFromDescription<HouseType>(value);
+            var newType = GetHouseTypeFromDescription(value);
             if (_houseType != newType)
             {
                 _houseType = newType;
@@ -134,6 +135,34 @@ public class HouseCondition : INotifyPropertyChanged
                 OnPropertyChanged(nameof(HouseTypeDescription));
             }
         }
+    }
+
+    /// <summary>
+    /// AOT友好的枚举描述获取方法
+    /// </summary>
+    private static string GetHouseTypeDescription(HouseType houseType)
+    {
+        return houseType switch
+        {
+            HouseType.OneRoom => "一居室",
+            HouseType.TwoRoom => "二居室",
+            HouseType.ThreeRoom => "三居室",
+            _ => houseType.ToString()
+        };
+    }
+
+    /// <summary>
+    /// AOT友好的枚举值获取方法
+    /// </summary>
+    private static HouseType GetHouseTypeFromDescription(string description)
+    {
+        return description switch
+        {
+            "一居室" => HouseType.OneRoom,
+            "二居室" => HouseType.TwoRoom,
+            "三居室" => HouseType.ThreeRoom,
+            _ => HouseType.OneRoom
+        };
     }
 
     public override string ToString()
@@ -210,60 +239,81 @@ public enum DriverType
     Edge
 }
 
+/// <summary>
+/// AOT友好的枚举帮助类，不使用反射
+/// </summary>
 public static class EnumHelper
 {
-    // 该扩展方法要求 T 必须是枚举类型（C# 7.3 及以上版本支持该约束）
+    /// <summary>
+    /// AOT友好的枚举描述获取方法
+    /// </summary>
     public static string GetDescription<T>(this T enumValue) where T : Enum
     {
-        // 获取类型信息
-        Type type = typeof(T);
-        // 获取枚举值的名称
-        string name = enumValue.ToString();
-        // 获取对应的字段信息
-        FieldInfo? field = type.GetField(name);
-        if (field != null)
+        if (enumValue is HouseType houseType)
         {
-            // 获取所有 DescriptionAttribute 属性
-            var attributes = (DescriptionAttribute[])field.GetCustomAttributes(typeof(DescriptionAttribute), false);
-            if (attributes != null && attributes.Length > 0)
+            return houseType switch
             {
-                return attributes[0].Description;
-            }
+                HouseType.OneRoom => "一居室",
+                HouseType.TwoRoom => "二居室",
+                HouseType.ThreeRoom => "三居室",
+                _ => enumValue.ToString()
+            };
         }
-
-        return name;
+        
+        return enumValue.ToString();
     }
 
+    /// <summary>
+    /// AOT友好的枚举值获取方法
+    /// </summary>
     public static T GetEnumValueFromDescription<T>(string description) where T : struct, Enum
     {
-        Type type = typeof(T);
-        foreach (FieldInfo field in type.GetFields())
+        if (typeof(T) == typeof(HouseType))
         {
-            if (!field.IsSpecialName)
+            var houseType = description switch
             {
-                var attribute =
-                    Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute)) as DescriptionAttribute;
-                if (attribute != null)
-                {
-                    if (attribute.Description == description)
-                        return (T)field.GetValue(null)!;
-                }
-                else
-                {
-                    if (field.Name.Equals(description, StringComparison.OrdinalIgnoreCase))
-                        return (T)field.GetValue(null)!;
-                }
-            }
+                "一居室" => HouseType.OneRoom,
+                "二居室" => HouseType.TwoRoom,
+                "三居室" => HouseType.ThreeRoom,
+                _ => HouseType.OneRoom
+            };
+            return (T)(object)houseType;
         }
 
+        // 对于其他枚举类型，使用默认解析
+        if (Enum.TryParse<T>(description, true, out var result))
+        {
+            return result;
+        }
+        
         throw new ArgumentException($"未能根据描述{description}找到对应的枚举值。");
     }
 
+    /// <summary>
+    /// AOT友好的枚举显示项列表获取方法
+    /// </summary>
     public static List<EnumDisplayItem<T>> GetEnumDisplayItems<T>() where T : struct, Enum
     {
         var items = new List<EnumDisplayItem<T>>();
-        var values = Enum.GetValues<T>();
         
+        if (typeof(T) == typeof(HouseType))
+        {
+            var houseTypeItems = new List<EnumDisplayItem<HouseType>>
+            {
+                new() { Value = HouseType.OneRoom, Description = "一居室" },
+                new() { Value = HouseType.TwoRoom, Description = "二居室" },
+                new() { Value = HouseType.ThreeRoom, Description = "三居室" }
+            };
+            
+            return houseTypeItems.ConvertAll(item => new EnumDisplayItem<T>
+            {
+                Value = (T)(object)item.Value,
+                Description = item.Description
+            });
+        }
+        
+        // 对于其他枚举类型，使用基本方法
+        var values = Enum.GetValues<T>();
         foreach (var value in values)
         {
             items.Add(new EnumDisplayItem<T>

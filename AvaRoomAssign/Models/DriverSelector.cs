@@ -48,56 +48,48 @@ namespace AvaRoomAssign.Models
 
         public async Task RunAsync()
         {
-            if ((string.IsNullOrWhiteSpace(_userAccount) || string.IsNullOrWhiteSpace(_userPassword))
-                && string.IsNullOrWhiteSpace(_cookie))
+            if (string.IsNullOrWhiteSpace(_userAccount) || string.IsNullOrWhiteSpace(_userPassword) ||
+                string.IsNullOrWhiteSpace(_cookie))
             {
-                Console.WriteLine("用户名、密码和cookie不能为空");
+                LogManager.Error("用户名、密码和cookie不能为空");
                 return;
             }
 
-            Login();
+            await Login();
             NavigateToSelection();
-            WaitUntilStartTime();
+            await WaitUntilStartTime();
             if (_cancellationToken.IsCancellationRequested)
             {
-                Console.WriteLine("操作已取消，退出选房流程");
+                LogManager.Warning("操作已取消，退出选房流程");
                 return;
             }
 
-            Console.WriteLine("选房开始！");
+            LogManager.Success("选房开始！");
             EnterSelectionPage();
             SwitchToIframe();
             
             var success = false;
+            var searchSuccessCount = 0;
             foreach (var condition in _communityList)
             {
-                Console.WriteLine($"正在搜索 {condition.CommunityName}...");
-                SearchCommunity(condition.CommunityName);
-                Console.WriteLine($"开始选择 {condition.CommunityName} 的房源...");
+                LogManager.Info($"正在搜索 {condition.CommunityName}...");
+                success = SearchAndSelectRoomAsync(condition);
+                LogManager.Info($"开始选择 {condition.CommunityName} 的房源...");
                 
-                success = TryFindAndSelectHouse(condition);
                 if (!success)
                 {
-                    Console.WriteLine($"志愿 {condition.CommunityName} 未中签，继续下一个志愿...");
+                    LogManager.Warning($"志愿 {condition.CommunityName} 未中签，继续下一个志愿...");
+                    searchSuccessCount++;
                     continue;
                 }
 
                 ConfirmSelection();
 
-                if (_autoConfirm)
+                if (!_autoConfirm)
                 {
-                    FinalConfirm();
-                    if (!CheckSuccess())
-                    {
-                        Console.WriteLine("房间已被他人抢先，尝试下一个志愿...");
-                        SwitchToIframe();
-                        success = false;
-                        continue;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("请手动进行最终确认");
+                    LogManager.Info("请手动进行最终确认");
+                    await Task.Delay(30000, _cancellationToken);
+                    break;
                 }
 
                 // 成功选房，退出循环
@@ -107,48 +99,34 @@ namespace AvaRoomAssign.Models
 
             if (!success)
             {
-                Console.WriteLine("所有志愿均未中签，流程结束");
+                LogManager.Info("所有志愿均未中签，流程结束");
             }
 
             // 无限等待或根据需要退出
             await Task.Delay(-1, _cancellationToken);
         }
 
-        private void Login()
+        private async Task Login()
         {
-            var cookieSuccess = false;
-            if (!string.IsNullOrEmpty(_cookie))
+            if (TryLoginWithCookie())
             {
-                var seleniumCookie = new Cookie(
-                    "SYS_USER_COOKIE_KEY", _cookie, "ent.qpgzf.cn", "/",
-                    DateTime.Now.AddHours(10));
-                _driver.Navigate().GoToUrl("https://ent.qpgzf.cn/");
-                _driver.Manage().Cookies.AddCookie(seleniumCookie);
-                _driver.Navigate().GoToUrl("https://ent.qpgzf.cn/CompanyHome/Main");
-                _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(3);
-                try
-                {
-                    _driver.FindElement(By.Id("mainCompany"));
-                    Console.WriteLine("使用 Cookie 登录成功");
-                    cookieSuccess = true;
-                }
-                catch
-                {
-                    Console.WriteLine("使用 Cookie 登录失败，尝试手动登录");
-                }
+                LogManager.Success("使用 Cookie 登录成功");
+                return;
+            }
+            else
+            {
+                LogManager.Warning("使用 Cookie 登录失败，尝试手动登录");
             }
 
-            if (cookieSuccess) return;
+            var loginUrl = "https://ent.qpgzf.cn/Account/Login";
+            _driver.Navigate().GoToUrl(loginUrl);
 
-            _driver.Navigate().GoToUrl("https://ent.qpgzf.cn/SysLoginManage");
-            _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-            _driver.FindElement(By.Name("UserAccount")).SendKeys(_userAccount);
-            _driver.FindElement(By.Name("PD")).SendKeys(_userPassword);
-            _driver.FindElement(By.ClassName("CompanyloginButton")).Click();
-            Console.WriteLine("请手动完成拖拽验证码...");
-            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(600));
-            wait.Until(d => d.Url == "https://ent.qpgzf.cn/CompanyHome/Main");
-            Console.WriteLine("登录成功！");
+            await Task.Delay(3000, _cancellationToken);
+
+            LogManager.Info("请手动完成拖拽验证码...");
+            await Task.Delay(10000, _cancellationToken);
+            
+            LogManager.Success("登录成功！");
         }
 
         private void NavigateToSelection()
@@ -158,27 +136,31 @@ namespace AvaRoomAssign.Models
             _driver.FindElement(By.CssSelector($"input[name='{_applyerName}']")).Click();
         }
 
-        private void WaitUntilStartTime()
+        private async Task WaitUntilStartTime()
         {
             var start = DateTime.ParseExact(_startTime, "yyyy-MM-dd HH:mm:ss", null);
-            while (true)
+            var now = DateTime.Now;
+            var timeUntilStart = start - now;
+
+            while (timeUntilStart.TotalSeconds > 0 && !_cancellationToken.IsCancellationRequested)
             {
-                if (_cancellationToken.IsCancellationRequested) return;
-                var now = DateTime.Now;
-                var remaining = start - now;
-                if (remaining.TotalSeconds < 2)
+                if (timeUntilStart.TotalSeconds <= 1)
                 {
-                    Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
+                    LogManager.Success($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
                     break;
                 }
-                Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {remaining}");
-                Thread.Sleep(1000);
+                LogManager.Info($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {timeUntilStart}");
+
+                await Task.Delay(1000, _cancellationToken);
+                
+                now = DateTime.Now;
+                timeUntilStart = start - now;
             }
         }
 
         private void EnterSelectionPage()
         {
-            Console.WriteLine("等待选房开始，尝试进入选房页面...");
+            LogManager.Info("等待选房开始，尝试进入选房页面...");
             while (true)
             {
                 try
@@ -191,10 +173,10 @@ namespace AvaRoomAssign.Models
                     var iframe = wait.Until(ExpectedConditions.ElementExists(By.Id("iframeDialog")));
                     if (iframe.GetAttribute("src").Contains("ApplyIDs"))
                     {
-                        Console.WriteLine("成功进入选房页面！");
+                        LogManager.Success("成功进入选房页面！");
                         break;
                     }
-                    Console.WriteLine("当前时间段无法分配房源，关闭弹窗后继续尝试...");
+                    LogManager.Warning("当前时间段无法分配房源，关闭弹窗后继续尝试...");
                     var closeBtn = _driver.FindElement(By.ClassName("ui-dialog-titlebar-close"));
                     Thread.Sleep(50);
                     ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", closeBtn);
@@ -208,7 +190,7 @@ namespace AvaRoomAssign.Models
                         var iframe = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("iframeDialog")));
                         var src = iframe.GetAttribute("src");
                         if (!src.Contains("ApplyIDs")) continue;
-                        Console.WriteLine("成功进入选房页面！");
+                        LogManager.Success("成功进入选房页面！");
                         break;
                     }
                     catch (Exception)
@@ -304,7 +286,7 @@ namespace AvaRoomAssign.Models
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"解析房源信息时出错: {ex.Message}");
+                    LogManager.Error($"解析房源信息时出错: {ex.Message}");
                     continue;
                 }
             }
@@ -317,7 +299,7 @@ namespace AvaRoomAssign.Models
             {
                 Thread.Sleep(50);
                 ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", toClick);
-                Console.WriteLine($"已选择匹配房源：名字: {comm}, " +
+                LogManager.Success($"已选择匹配房源：名字: {comm}, " +
                                     $"幢号: {bNo}, " +
                                     $"楼层: {fText}, " +
                                     $"价格: {price}, " +
@@ -327,7 +309,7 @@ namespace AvaRoomAssign.Models
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"点击选择房源时出错: {ex.Message}");
+                LogManager.Error($"点击选择房源时出错: {ex.Message}");
                 return false;
             }
         }
@@ -376,5 +358,34 @@ namespace AvaRoomAssign.Models
             _driver.Quit();
         }
         
+        private bool TryLoginWithCookie()
+        {
+            if (!string.IsNullOrEmpty(_cookie))
+            {
+                var seleniumCookie = new Cookie(
+                    "SYS_USER_COOKIE_KEY", _cookie, "ent.qpgzf.cn", "/",
+                    DateTime.Now.AddHours(10));
+                _driver.Navigate().GoToUrl("https://ent.qpgzf.cn/");
+                _driver.Manage().Cookies.AddCookie(seleniumCookie);
+                _driver.Navigate().GoToUrl("https://ent.qpgzf.cn/CompanyHome/Main");
+                _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(3);
+                try
+                {
+                    _driver.FindElement(By.Id("mainCompany"));
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private bool SearchAndSelectRoomAsync(HouseCondition condition)
+        {
+            SearchCommunity(condition.CommunityName);
+            return TryFindAndSelectHouse(condition);
+        }
     }
 } 

@@ -64,7 +64,7 @@ namespace AvaRoomAssign.Models
                     {
                         if (attempt > 1)
                         {
-                            Console.WriteLine($"✅ {operationName} 在第 {attempt} 次尝试后成功");
+                            LogManager.Success($"{operationName} 在第 {attempt} 次尝试后成功");
                         }
                         return result;
                     }
@@ -72,18 +72,18 @@ namespace AvaRoomAssign.Models
                     // 结果为空但没有异常，代表请求失败，继续重试
                     if (attempt == maxAttempts)
                     {
-                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后仍无结果");
+                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后仍无结果");
                     }
                     else
                     {
-                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败，{RetryDelayMs}ms后重试...");
+                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败，{RetryDelayMs}ms后重试...");
                         try
                         {
                             await Task.Delay(RetryDelayMs, _cancellationToken);
                         }
                         catch (OperationCanceledException)
                         {
-                            Console.WriteLine("重试等待被取消，流程终止");
+                            LogManager.Warning("重试等待被取消，流程终止");
                             return null;
                         }
                     }
@@ -94,20 +94,20 @@ namespace AvaRoomAssign.Models
                     
                     if (attempt < maxAttempts)
                     {
-                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
+                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
                         try
                         {
                             await Task.Delay(RetryDelayMs, _cancellationToken);
                         }
                         catch (OperationCanceledException)
                         {
-                            Console.WriteLine("重试等待被取消，流程终止");
+                            LogManager.Warning("重试等待被取消，流程终止");
                             return null;
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
+                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
                     }
                 }
             }
@@ -141,7 +141,7 @@ namespace AvaRoomAssign.Models
                     {
                         if (attempt > 1)
                         {
-                            Console.WriteLine($"✅ {operationName} 在第 {attempt} 次尝试后成功");
+                            LogManager.Success($"{operationName} 在第 {attempt} 次尝试后成功");
                         }
                         return true;
                     }
@@ -149,20 +149,20 @@ namespace AvaRoomAssign.Models
                     // 结果为false，继续重试
                     if (attempt < maxAttempts)
                     {
-                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试返回false，{RetryDelayMs}ms后重试...");
+                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试返回false，{RetryDelayMs}ms后重试...");
                         try
                         {
                             await Task.Delay(RetryDelayMs, _cancellationToken);
                         }
                         catch (OperationCanceledException)
                         {
-                            Console.WriteLine("重试等待被取消，流程终止");
+                            LogManager.Warning("重试等待被取消，流程终止");
                             return false;
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后仍返回false");
+                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后仍返回false");
                     }
                 }
                 catch (Exception ex)
@@ -171,20 +171,20 @@ namespace AvaRoomAssign.Models
                     
                     if (attempt < maxAttempts)
                     {
-                        Console.WriteLine($"⚠️ {operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
+                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
                         try
                         {
                             await Task.Delay(RetryDelayMs, _cancellationToken);
                         }
                         catch (OperationCanceledException)
                         {
-                            Console.WriteLine("重试等待被取消，流程终止");
+                            LogManager.Warning("重试等待被取消，流程终止");
                             return false;
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ {operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
+                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
                     }
                 }
             }
@@ -201,32 +201,32 @@ namespace AvaRoomAssign.Models
                 var applierId = await GetApplierIdAsync(client);
                 if (applierId == null)
                 {
-                    Console.WriteLine("获取申请人ID失败，流程终止");
+                    LogManager.Error("获取申请人ID失败，流程终止");
                     return;
                 }
 
                 // 检查是否已被取消
                 if (_cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine("操作已取消，流程终止");
+                    LogManager.Warning("操作已取消，流程终止");
                     return;
                 }
 
                 var waitResult = await WaitForStartTimeAsync();
                 if (!waitResult)
                 {
-                    Console.WriteLine("等待开始时间被取消，流程终止");
+                    LogManager.Warning("等待开始时间被取消，流程终止");
                     return;
                 }
 
                 // 再次检查是否已被取消
                 if (_cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine("操作已取消，流程终止");
+                    LogManager.Warning("操作已取消，流程终止");
                     return;
                 }
 
-                Console.WriteLine("发包选房开始！");
+                LogManager.Success("发包选房开始！");
 
                 var anySuccess = false;
                 foreach (var condition in _conditions)
@@ -234,47 +234,47 @@ namespace AvaRoomAssign.Models
                     // 在每个志愿开始前检查取消状态
                     if (_cancellationToken.IsCancellationRequested)
                     {
-                        Console.WriteLine("操作已取消，流程终止");
+                        LogManager.Warning("操作已取消，流程终止");
                         return;
                     }
 
-                    Console.WriteLine($"尝试志愿: {condition}");
+                    LogManager.Info($"尝试志愿: {condition}");
                     var roomId = await FindMatchingRoomIdAsync(client, applierId, condition);
                     if (roomId == null)
                     {
-                        Console.WriteLine($"未找到符合条件的房源: {condition.CommunityName}");
+                        LogManager.Warning($"未找到符合条件的房源: {condition.CommunityName}");
                         continue;
                     }
 
                     // 检查是否已被取消
                     if (_cancellationToken.IsCancellationRequested)
                     {
-                        Console.WriteLine("操作已取消，流程终止");
+                        LogManager.Warning("操作已取消，流程终止");
                         return;
                     }
 
-                    Console.WriteLine($"找到房源ID: {roomId}，开始发包");
+                    LogManager.Info($"找到房源ID: {roomId}，开始发包");
                     var success = await TrySelectRoomAsync(client, applierId, roomId);
                     if (success)
                     {
-                        Console.WriteLine($"志愿 {condition.CommunityName} 发包选房成功！");
+                        LogManager.Success($"志愿 {condition.CommunityName} 发包选房成功！");
                         anySuccess = true;
                         break;
                     }
                     
-                    Console.WriteLine($"志愿 {condition.CommunityName} 发包未成功，继续下一个志愿");
+                    LogManager.Warning($"志愿 {condition.CommunityName} 发包未成功，继续下一个志愿");
                 }
 
                 if (!anySuccess)
-                    Console.WriteLine("所有志愿均未选中，流程结束");
+                    LogManager.Info("所有志愿均未选中，流程结束");
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("操作已取消，流程终止");
+                LogManager.Warning("操作已取消，流程终止");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"运行过程中发生错误: {ex.Message}");
+                LogManager.Error($"运行过程中发生错误: {ex.Message}");
             }
         }
 
@@ -303,11 +303,11 @@ namespace AvaRoomAssign.Models
                 var node = doc.DocumentNode.SelectSingleNode($"//input[@name='{_applierName}']");
                 if (node?.Attributes["value"]?.Value is { } id && !string.IsNullOrEmpty(id))
                 {
-                    Console.WriteLine($"成功获取申请人ID: {id}");
+                    LogManager.Success($"成功获取申请人ID: {id}");
                     return id;
                 }
 
-                Console.WriteLine($"未找到申请人 {_applierName} 对应的 ID");
+                LogManager.Warning($"未找到申请人 {_applierName} 对应的 ID");
                 return null;
             }, "获取申请人ID");
         }
@@ -326,22 +326,22 @@ namespace AvaRoomAssign.Models
                     var diff = _startTime - now;
                     if (diff.TotalSeconds <= 1)
                     {
-                        Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
+                        LogManager.Success($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
                         return true;
                     }
 
-                    Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
+                    LogManager.Info($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
                     
                     // 使用异步延迟，支持取消令牌
                     await Task.Delay(1000, _cancellationToken);
                 }
                 
-                Console.WriteLine("等待开始时间被用户取消");
+                LogManager.Warning("等待开始时间被用户取消");
                 return false;
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("等待开始时间被用户取消");
+                LogManager.Warning("等待开始时间被用户取消");
                 return false;
             }
         }
@@ -358,11 +358,11 @@ namespace AvaRoomAssign.Models
                 var diff = _startTime - now;
                 if (diff.TotalSeconds <= 1)
                 {
-                    Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
+                    LogManager.Success($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
                     return;
                 }
 
-                Console.WriteLine($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
+                LogManager.Info($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
                 Thread.Sleep(1000);
             }
         }
@@ -434,13 +434,239 @@ namespace AvaRoomAssign.Models
                         continue;
 
                     var roomId = onclick[start..end];
-                    Console.WriteLine($"获取到 {condition.CommunityName} 房型 {condition.HouseType} 幢号 {buildingNo} " +
-                                      $"楼层 {floorNo}的房源ID: {roomId}");
                     return roomId;
                 }
 
                 return null;
             }, $"查找房源ID - {condition.CommunityName}");
+        }
+
+        /// <summary>
+        /// 获取某个条件下的所有房间ID（不只是第一个匹配的）
+        /// </summary>
+        /// <param name="client">HTTP客户端</param>
+        /// <param name="applyerId">申请人ID</param>
+        /// <param name="condition">房屋条件</param>
+        /// <returns>所有匹配的房间ID列表</returns>
+        public async Task<List<string>> FindAllMatchingRoomIdsAsync(HttpClient client, string applyerId, HouseCondition condition)
+        {
+            return await ExecuteWithRetryAsync(async () =>
+            {
+                const string url = "https://ent.qpgzf.cn/RoomAssign/SelectRoom";
+                var data = new Dictionary<string, string>
+                {
+                    ["ApplyIDs"] = applyerId,
+                    ["IsApplyTalent"] = "0",
+                    ["type"] = "1",
+                    ["SearchEntity._PageSize"] = "500",
+                    ["SearchEntity._PageIndex"] = "1",
+                    ["SearchEntity._CommonSearchCondition"] = condition.CommunityName
+                };
+
+                var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
+                var html = await response.Content.ReadAsStringAsync(_cancellationToken);
+
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
+                var rows = doc.DocumentNode.SelectNodes("//table[@id='common-table']/tbody/tr");
+                if (rows == null)
+                    return new List<string>();
+
+                var roomIds = new List<string>();
+                foreach (var row in rows)
+                {
+                    var cells = row.SelectNodes("./td");
+                    if (cells == null || cells.Count < 9)
+                        continue;
+
+                    // 解析各列
+                    var commName = cells[1].InnerText.Trim();
+                    if (commName != condition.CommunityName)
+                        continue;
+
+                    if (!int.TryParse(cells[2].InnerText.Trim(), out var buildingNo) ||
+                        !HouseCondition.FilterEqual(buildingNo, condition.BuildingNo))
+                        continue;
+
+                    var floorText = cells[3].InnerText.Trim();
+                    if (!int.TryParse(floorText.Length >= 2 ? floorText[..2] : floorText,
+                            out var floorNo) ||
+                        !HouseCondition.FilterFloor(floorNo, condition.FloorRange))
+                        continue;
+
+                    if (!double.TryParse(cells[5].InnerText.Trim(), out var price) ||
+                        !HouseCondition.FilterPrice(price, condition.MaxPrice))
+                        continue;
+
+                    if (!double.TryParse(cells[7].InnerText.Trim(), out var area) ||
+                        !HouseCondition.FilterArea(area, condition.LeastArea))
+                        continue;
+                    
+                    // 提取 onclick 中的 roomId
+                    var actionNode = row.SelectSingleNode(".//a[contains(@onclick, 'selectRooms')]");
+                    var onclick = actionNode?.GetAttributeValue("onclick", string.Empty);
+                    if (string.IsNullOrEmpty(onclick))
+                        continue;
+
+                    const string token = "selectRooms('";
+                    var start = onclick.IndexOf(token, StringComparison.Ordinal) + token.Length;
+                    var end = onclick.IndexOf('\'', start);
+                    if (start < token.Length || end < 0)
+                        continue;
+
+                    var roomId = onclick[start..end];
+                    roomIds.Add(roomId);
+                }
+
+                return roomIds;
+            }, $"查找所有房源ID - {condition.CommunityName}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// 执行房间ID预获取
+        /// </summary>
+        /// <param name="conditions">房屋条件列表</param>
+        /// <returns>条件与房间ID的映射字典</returns>
+        public async Task<Dictionary<string, List<string>>> PreFetchRoomIdsAsync(List<HouseCondition> conditions)
+        {
+            var result = new Dictionary<string, List<string>>();
+            
+            try
+            {
+                using var client = CreateHttpClient(_cookie);
+
+                var applierId = await GetApplierIdAsync(client);
+                if (applierId == null)
+                {
+                    return result;
+                }
+
+                foreach (var condition in conditions)
+                {
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    var conditionKey = ConditionRoomIdMapping.GenerateConditionKey(condition);
+                    var roomIds = await FindAllMatchingRoomIdsAsync(client, applierId, condition);
+                    
+                    if (roomIds.Count > 0)
+                    {
+                        result[conditionKey] = roomIds;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"预获取房间ID时出错: {ex.Message}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 使用预获取的房间ID运行选房流程
+        /// </summary>
+        /// <param name="roomIdMappings">预获取的房间ID映射</param>
+        public async Task RunWithPreFetchedRoomIdsAsync(Dictionary<string, List<string>> roomIdMappings)
+        {
+            try
+            {
+                using var client = CreateHttpClient(_cookie);
+
+                var applierId = await GetApplierIdAsync(client);
+                if (applierId == null)
+                {
+                    return;
+                }
+
+                // 检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                var waitResult = await WaitForStartTimeAsync();
+                if (!waitResult)
+                {
+                    return;
+                }
+
+                // 再次检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                // 收集所有预获取的房间ID
+                var allRoomIds = new List<string>();
+                var roomIdToCondition = new Dictionary<string, HouseCondition>();
+
+                foreach (var condition in _conditions)
+                {
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    var conditionKey = ConditionRoomIdMapping.GenerateConditionKey(condition);
+                    if (roomIdMappings.TryGetValue(conditionKey, out var roomIds) && roomIds.Count > 0)
+                    {
+                        foreach (var roomId in roomIds)
+                        {
+                            allRoomIds.Add(roomId);
+                            roomIdToCondition[roomId] = condition;
+                        }
+                    }
+                    else
+                    {
+                        // 如果没有预获取的房间ID，使用原有的查找方法
+                        var roomId = await FindMatchingRoomIdAsync(client, applierId, condition);
+                        if (roomId != null)
+                        {
+                            allRoomIds.Add(roomId);
+                            roomIdToCondition[roomId] = condition;
+                        }
+                    }
+                }
+
+                if (allRoomIds.Count == 0)
+                {
+                    return;
+                }
+
+                // 尝试所有房间ID
+                var anySuccess = false;
+                foreach (var roomId in allRoomIds)
+                {
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    var condition = roomIdToCondition[roomId];
+                    var success = await TrySelectRoomAsync(client, applierId, roomId);
+                    if (success)
+                    {
+                        anySuccess = true;
+                        break;
+                    }
+                }
+
+                if (!anySuccess)
+                {
+                    // 日志输出会在TrySelectRoomAsync中处理
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 操作被取消
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"运行预获取选房流程时发生错误: {ex.Message}");
+            }
         }
 
         private async Task<bool> TrySelectRoomAsync(HttpClient client, string applyerId, string roomId)
@@ -464,7 +690,7 @@ namespace AvaRoomAssign.Models
                 }
                 catch (OperationCanceledException)
                 {
-                    Console.WriteLine("请求间隔等待被取消，流程终止");
+                    LogManager.Warning("请求间隔等待被取消，流程终止");
                     return false;
                 }
             }
@@ -477,7 +703,7 @@ namespace AvaRoomAssign.Models
             var data = new Dictionary<string, string> { ["ApplyIDs"] = applyerId, ["roomID"] = roomId };
             var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
             var result = await response.Content.ReadAsStringAsync(_cancellationToken);
-            Console.WriteLine(result);
+            LogManager.Info(result);
             return result.Contains("成功");
         }
     }

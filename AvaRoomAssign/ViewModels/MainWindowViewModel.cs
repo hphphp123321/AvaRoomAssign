@@ -61,6 +61,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isRunning = false;
 
     [ObservableProperty]
+    private bool _isFetchingRoomIds = false;
+
+    [ObservableProperty]
     private ObservableCollection<HouseCondition> _communityConditions = new();
 
     public List<string> OperationModes { get; } = new() { "模拟点击", "Http发包" };
@@ -70,31 +73,38 @@ public partial class MainWindowViewModel : ViewModelBase
     private CancellationTokenSource? _cancellationTokenSource;
     private ISelector? _currentSelector;
     private bool _isLoadingConfig = false; // 防止加载配置时触发保存
+    private Dictionary<string, List<string>> _preFetchedRoomIds = new(); // 预获取的房间ID
 
     public MainWindowViewModel()
     {
         try
         {
-            // 延迟初始化，先加载配置再设置控制台重定向
+            // 先初始化日志管理器，再加载配置
             Task.Run(async () =>
             {
-                await LoadConfigurationAsync();
-                
-                await Task.Delay(1000);
+                // 首先在UI线程上初始化日志管理器
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     try
                     {
-                        var consoleWriter = new ConsoleTextWriter(AppendLog);
-                        Console.SetOut(consoleWriter);
-                        Console.WriteLine("✅ 控制台重定向已设置");
-                        Console.WriteLine($"✅ 配置加载完成，包含 {CommunityConditions.Count} 个社区条件");
-                        Console.WriteLine($"📁 配置文件路径: {ConfigManager.GetConfigPath()}");
+                        // 先初始化日志管理器
+                        LogManager.Initialize(AppendLog);
+                        LogManager.Success("日志系统已初始化");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"设置控制台重定向时出错: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"初始化日志系统时出错: {ex.Message}");
                     }
+                });
+                
+                // 然后加载配置
+                await LoadConfigurationAsync();
+                
+                // 最后输出配置加载完成的消息
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    LogManager.Success($"配置加载完成，包含 {CommunityConditions.Count} 个社区条件");
+                    LogManager.Info($"配置文件路径: {ConfigManager.GetConfigPath()}");
                 });
             });
         }
@@ -115,7 +125,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var config = await ConfigManager.LoadConfigAsync();
             
             // 在UI线程中更新属性
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 // 更新基本配置
                 SelectedOperationMode = config.SelectedOperationMode;
@@ -143,6 +153,9 @@ public partial class MainWindowViewModel : ViewModelBase
                     var defaultCondition = new HouseCondition("正荣景苑", 0, "3-4,6", 0, 0, HouseType.OneRoom);
                     CommunityConditions.Add(defaultCondition);
                 }
+                
+                // 加载房间ID映射
+                await LoadRoomIdMappingsAsync(config);
             });
         }
         catch (Exception ex)
@@ -224,11 +237,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var newCondition = new HouseCondition("新社区", 1, "1-3", 2000, 50, HouseType.OneRoom);
             CommunityConditions.Add(newCondition);
-            Console.WriteLine($"已添加新的社区条件: {newCondition.CommunityName}");
+            LogManager.Success($"已添加新的社区条件: {newCondition.CommunityName}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"添加社区条件时出错: {ex.Message}");
+            LogManager.Error("添加社区条件时出错", ex);
         }
     }
 
@@ -240,12 +253,12 @@ public partial class MainWindowViewModel : ViewModelBase
             var removed = CommunityConditions.Remove(condition);
             if (removed)
             {
-                Console.WriteLine($"已删除社区条件: {condition.CommunityName}");
+                LogManager.Success($"已删除社区条件: {condition.CommunityName}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"删除社区条件时出错: {ex.Message}");
+            LogManager.Error("删除社区条件时出错", ex);
         }
     }
 
@@ -276,20 +289,20 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     if (string.IsNullOrWhiteSpace(ApplierName))
                     {
-                        Console.WriteLine("申请人名称不能为空");
+                        LogManager.Error("申请人名称不能为空");
                         return;
                     }
 
                     if (communityList.Count == 0)
                     {
-                        Console.WriteLine("社区条件不能为空");
+                        LogManager.Error("社区条件不能为空");
                         return;
                     }
 
                     switch (operationMode)
                     {
                         case OperationMode.Click:
-                            Console.WriteLine("正在启动浏览器...");
+                            LogManager.Info("正在启动浏览器...");
                             var driver = GetDriver(driverType);
                             
                             _currentSelector = new DriverSelector(
@@ -306,13 +319,22 @@ public partial class MainWindowViewModel : ViewModelBase
                             break;
 
                         case OperationMode.Http:
-                            _currentSelector = new HttpSelector(
+                            var httpSelector = new HttpSelector(
                                 applierName: ApplierName,
                                 communityList: communityList,
                                 startTime: startTime,
                                 cookie: Cookie,
                                 requestIntervalMs: clickInterval,
                                 cancellationToken: _cancellationTokenSource.Token);
+                            
+                            _currentSelector = httpSelector;
+                            
+                            // 检查是否有预获取的房间ID
+                            if (_preFetchedRoomIds.Count > 0)
+                            {
+                                await httpSelector.RunWithPreFetchedRoomIdsAsync(_preFetchedRoomIds);
+                                return; // 使用预获取的房间ID，直接返回
+                            }
                             break;
 
                         default:
@@ -323,7 +345,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("自动化过程中出现错误: " + ex.Message);
+                    LogManager.Error("自动化过程中出现错误", ex);
                 }
                 finally
                 {
@@ -333,7 +355,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine("启动过程中出现错误: " + ex.Message);
+            LogManager.Error("启动过程中出现错误", ex);
             IsRunning = false;
         }
     }
@@ -345,11 +367,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _cancellationTokenSource?.Cancel();
             _currentSelector?.Stop();
-            Console.WriteLine("已停止抢房。");
+            LogManager.Warning("已停止抢房");
         }
         catch (Exception ex)
         {
-            Console.WriteLine("停止抢房时出现错误: " + ex.Message);
+            LogManager.Error("停止抢房时出现错误", ex);
         }
         finally
         {
@@ -371,7 +393,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"打开GitHub链接失败: {ex.Message}");
+            LogManager.Error("打开GitHub链接失败", ex);
         }
     }
 
@@ -391,11 +413,11 @@ public partial class MainWindowViewModel : ViewModelBase
             // 重新加载默认配置
             await LoadConfigurationAsync();
             
-            Console.WriteLine("✅ 配置已重置为默认值");
+            LogManager.Success("配置已重置为默认值");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ 重置配置失败: {ex.Message}");
+            LogManager.Error("重置配置失败", ex);
         }
     }
 
@@ -408,11 +430,184 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             await SaveConfigurationAsync();
-            Console.WriteLine("✅ 配置已手动保存");
+            LogManager.Success("配置已手动保存");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ 手动保存配置失败: {ex.Message}");
+            LogManager.Error("手动保存配置失败", ex);
+        }
+    }
+
+    [RelayCommand]
+    private async Task FetchRoomIdsAsync()
+    {
+        if (IsFetchingRoomIds || IsRunning) return;
+
+        IsFetchingRoomIds = true;
+
+        try
+        {
+            // 检查HTTP发包模式
+            if (SelectedOperationMode != 1)
+            {
+                LogManager.Warning("获取房间ID功能仅在HTTP发包模式下可用");
+                return;
+            }
+
+            // 检查必要参数
+            if (string.IsNullOrWhiteSpace(Cookie))
+            {
+                LogManager.Error("Cookie不能为空，请先配置Cookie");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(ApplierName))
+            {
+                LogManager.Error("申请人名称不能为空");
+                return;
+            }
+
+            if (CommunityConditions.Count == 0)
+            {
+                LogManager.Error("请先添加社区条件");
+                return;
+            }
+
+            LogManager.Info("开始获取房间ID...");
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            var communityList = new List<HouseCondition>(CommunityConditions);
+
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    // 创建HttpSelector用于预获取房间ID
+                    var httpSelector = new HttpSelector(
+                        applierName: ApplierName,
+                        communityList: communityList,
+                        startTime: DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                        cookie: Cookie,
+                        requestIntervalMs: 1000,
+                        cancellationToken: cancellationTokenSource.Token);
+
+                    // 执行预获取
+                    var roomIdMappings = await httpSelector.PreFetchRoomIdsAsync(communityList);
+                    
+                    // 保存到配置文件
+                    await SaveRoomIdMappingsAsync(roomIdMappings, communityList);
+
+                    // 缓存到内存
+                    _preFetchedRoomIds = roomIdMappings;
+
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        var totalRoomIds = roomIdMappings.Values.Sum(list => list.Count);
+                        
+                    
+                        foreach (var (key, roomIds) in roomIdMappings)
+                        {
+                            var condition = communityList.FirstOrDefault(c => 
+                                ConditionRoomIdMapping.GenerateConditionKey(c) == key);
+                            if (condition != null)
+                            {
+                                LogManager.Info($"  {condition.CommunityName}: {roomIds.Count} 个房间");
+                            }
+                        }
+
+                        if (totalRoomIds > 0)
+                        {
+                            LogManager.Success($"房间ID获取完成！共获取到 {totalRoomIds} 个房间ID，并已保存到配置文件");
+                            LogManager.Info($"配置文件路径: {ConfigManager.GetConfigPath()}");
+                            LogManager.Success($"下次抢房时会自动使用这些房间ID加速抢房，无需再次获取了");
+                        }
+                        else
+                        {
+                            LogManager.Warning("未获取到任何房间ID，请检查配置是否正确或者是否在抢房时间范围内");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        LogManager.Error("获取房间ID时出错", ex);
+                    });
+                }
+            }, cancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error("启动获取房间ID过程中出现错误", ex);
+        }
+        finally
+        {
+            IsFetchingRoomIds = false;
+        }
+    }
+
+    /// <summary>
+    /// 保存房间ID映射到配置文件
+    /// </summary>
+    private async Task SaveRoomIdMappingsAsync(Dictionary<string, List<string>> roomIdMappings, List<HouseCondition> conditions)
+    {
+        try
+        {
+            var config = await ConfigManager.LoadConfigAsync();
+            
+            // 清空现有映射
+            config.RoomIdMappings.Clear();
+            
+            // 添加新的映射
+            foreach (var condition in conditions)
+            {
+                var conditionKey = ConditionRoomIdMapping.GenerateConditionKey(condition);
+                var mapping = ConditionRoomIdMapping.FromHouseCondition(condition);
+                
+                if (roomIdMappings.TryGetValue(conditionKey, out var roomIds))
+                {
+                    mapping.RoomIds = roomIds;
+                }
+                
+                config.RoomIdMappings.Add(mapping);
+            }
+            
+            await ConfigManager.SaveConfigAsync(config);
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error("保存房间ID映射失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 从配置文件加载房间ID映射
+    /// </summary>
+    private async Task LoadRoomIdMappingsAsync(AppConfig? config = null)
+    {
+        try
+        {
+            // 如果没有传入配置，则加载配置；否则使用传入的配置
+            config ??= await ConfigManager.LoadConfigAsync();
+            _preFetchedRoomIds.Clear();
+            
+            foreach (var mapping in config.RoomIdMappings)
+            {
+                if (mapping.RoomIds.Count > 0)
+                {
+                    _preFetchedRoomIds[mapping.ConditionKey] = mapping.RoomIds;
+                }
+            }
+            
+            if (_preFetchedRoomIds.Count > 0)
+            {
+                var totalRoomIds = _preFetchedRoomIds.Values.Sum(list => list.Count);
+                LogManager.Success($"已加载 {totalRoomIds} 个预获取的房间ID");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error("加载房间ID映射失败", ex);
         }
     }
 
