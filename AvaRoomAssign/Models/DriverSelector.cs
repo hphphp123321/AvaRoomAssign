@@ -109,24 +109,30 @@ namespace AvaRoomAssign.Models
 
         private async Task Login()
         {
-            if (TryLoginWithCookie())
+            var cookieSuccess = false;
+            if (!string.IsNullOrEmpty(_cookie))
             {
-                LogManager.Success("使用 Cookie 登录成功");
-                return;
+                if (TryLoginWithCookie())
+                {
+                    LogManager.Success("使用 Cookie 登录成功");
+                    cookieSuccess = true;
+                }
+                else
+                {
+                    LogManager.Warning("使用 Cookie 登录失败，尝试手动登录");
+                }
             }
-            else
-            {
-                LogManager.Warning("使用 Cookie 登录失败，尝试手动登录");
-            }
 
-            var loginUrl = "https://ent.qpgzf.cn/Account/Login";
-            _driver.Navigate().GoToUrl(loginUrl);
+            if (cookieSuccess) return;
 
-            await Task.Delay(3000, _cancellationToken);
-
+            await _driver.Navigate().GoToUrlAsync("https://ent.qpgzf.cn/SysLoginManage");
+            _driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+            _driver.FindElement(By.Name("UserAccount")).SendKeys(_userAccount);
+            _driver.FindElement(By.Name("PD")).SendKeys(_userPassword);
+            _driver.FindElement(By.ClassName("CompanyloginButton")).Click();
             LogManager.Info("请手动完成拖拽验证码...");
-            await Task.Delay(10000, _cancellationToken);
-            
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(600));
+            await Task.Run(() => wait.Until(d => d.Url == "https://ent.qpgzf.cn/CompanyHome/Main"), _cancellationToken);
             LogManager.Success("登录成功！");
         }
 
