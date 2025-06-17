@@ -66,6 +66,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<HouseCondition> _communityConditions = new();
 
+    // 添加手动房间ID列表属性
+    [ObservableProperty]
+    private string _manualRoomIds = string.Empty;
+
+    // 添加用于切换社区条件设置和手动房间ID的属性
+    [ObservableProperty]
+    private bool _useManualRoomIds = false;
+
     public List<string> OperationModes { get; } = new() { "模拟点击", "Http发包" };
     public List<string> BrowserTypes { get; } = new() { "Chrome", "Edge" };
     public List<string> HouseTypes { get; } = new() { "一居室", "二居室", "三居室" };
@@ -74,6 +82,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private ISelector? _currentSelector;
     private bool _isLoadingConfig = false; // 防止加载配置时触发保存
     private Dictionary<string, List<string>> _preFetchedRoomIds = new(); // 预获取的房间ID
+    
+    /// <summary>
+    /// 日志更新事件，用于通知UI自动滚动到底部
+    /// </summary>
+    public event EventHandler? LogUpdated;
 
     public MainWindowViewModel()
     {
@@ -93,7 +106,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"初始化日志系统时出错: {ex.Message}");
+                        LogManager.Error($"初始化日志系统时出错: {ex.Message}");
                     }
                 });
                 
@@ -110,7 +123,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"❌ ViewModel初始化失败: {ex.Message}");
+            LogManager.Error($"❌ ViewModel初始化失败: {ex.Message}");
         }
     }
 
@@ -140,6 +153,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 ClickInterval = config.ClickInterval;
                 AutoConfirm = config.AutoConfirm;
                 
+                // 添加加载手动房间ID
+                ManualRoomIds = config.ManualRoomIds;
+                
+                // 添加加载使用手动房间ID的开关状态
+                UseManualRoomIds = config.UseManualRoomIds;
+                
                 // 更新社区条件
                 CommunityConditions.Clear();
                 foreach (var conditionData in config.CommunityConditions)
@@ -160,7 +179,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"❌ 加载配置失败: {ex.Message}");
+            LogManager.Error($"❌ 加载配置失败: {ex.Message}");
         }
         finally
         {
@@ -193,7 +212,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 StartSecond = StartSecond,
                 ClickInterval = ClickInterval,
                 AutoConfirm = AutoConfirm,
-                CommunityConditions = CommunityConditions.Select(HouseConditionData.FromHouseCondition).ToList()
+                CommunityConditions = CommunityConditions.Select(HouseConditionData.FromHouseCondition).ToList(),
+                ManualRoomIds = ManualRoomIds,
+                UseManualRoomIds = UseManualRoomIds
             };
             
             // 使用异步保存，避免阻塞UI
@@ -201,7 +222,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"❌ 保存配置失败: {ex.Message}");
+            LogManager.Error($"❌ 保存配置失败: {ex.Message}");
         }
     }
 
@@ -328,6 +349,14 @@ public partial class MainWindowViewModel : ViewModelBase
                                 cancellationToken: _cancellationTokenSource.Token);
                             
                             _currentSelector = httpSelector;
+                            
+                            // 检查是否启用了手动输入房间ID模式且有手动输入的房间ID
+                            if (UseManualRoomIds && !string.IsNullOrWhiteSpace(ManualRoomIds))
+                            {
+                                LogManager.Info("使用手动输入的房间ID列表进行抢房");
+                                await httpSelector.RunWithManualRoomIdsAsync(ManualRoomIds);
+                                return; // 使用手动房间ID，直接返回
+                            }
                             
                             // 检查是否有预获取的房间ID
                             if (_preFetchedRoomIds.Count > 0)
@@ -627,28 +656,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
             LogText += text;
             OnPropertyChanged(nameof(LogText));
+            
+            // 触发日志更新事件，通知UI滚动到底部
+            LogUpdated?.Invoke(this, EventArgs.Empty);
         });
     }
 
     private IWebDriver GetDriver(DriverType driverType)
     {
-        IWebDriver driver = null!;
-
-        switch (driverType)
+        return driverType switch
         {
-            case DriverType.Chrome:
-                var chromeOptions = new ChromeOptions();
-                driver = new ChromeDriver(chromeOptions);
-                break;
-            case DriverType.Edge:
-                var edgeOptions = new EdgeOptions();
-                edgeOptions.AddArgument("--edge-skip-compat-layer-relaunch");
-                driver = new EdgeDriver(edgeOptions);
-                break;
-            default:
-                break;
-        }
-
-        return driver;
+            DriverType.Chrome => new ChromeDriver(new ChromeOptions()),
+            DriverType.Edge => new EdgeDriver(new EdgeOptions()),
+            _ => throw new ArgumentException($"不支持的浏览器类型: {driverType}")
+        };
     }
 }

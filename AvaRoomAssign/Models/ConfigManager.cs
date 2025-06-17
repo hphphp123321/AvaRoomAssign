@@ -197,6 +197,16 @@ namespace AvaRoomAssign.Models
         /// 房间ID映射列表
         /// </summary>
         public List<ConditionRoomIdMapping> RoomIdMappings { get; set; } = new();
+
+        /// <summary>
+        /// 手动输入的房间ID列表（每行一个，支持逗号分隔）
+        /// </summary>
+        public string ManualRoomIds { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 是否使用手动房间ID模式（true: 手动房间ID, false: 社区条件设置）
+        /// </summary>
+        public bool UseManualRoomIds { get; set; } = false;
     }
 
     /// <summary>

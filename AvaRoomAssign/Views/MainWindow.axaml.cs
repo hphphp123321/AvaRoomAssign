@@ -5,10 +5,14 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Animation;
 using Avalonia.Input;
+using Avalonia;
+using Avalonia.Threading;
 using AvaRoomAssign.ViewModels;
 using AvaRoomAssign.Models;
 using System;
 using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace AvaRoomAssign.Views;
 
@@ -16,12 +20,17 @@ public partial class MainWindow : Window
 {
     private bool _isDarkTheme = false; // 默认为浅色主题
     private bool _isLogExpanded = false; // 日志区域是否展开
-    private const double LOG_NORMAL_HEIGHT = 260; // 正常状态下日志区域高度
-    private const double LOG_MIN_HEIGHT = 120; // 日志区域最小高度
-    private const double LOG_MAX_HEIGHT = 600; // 日志区域最大高度
-    private const double HEADER_HEIGHT = 100; // 标题栏高度
-    private const double FOOTER_HEIGHT = 80; // 按钮区域高度
-    private const double RESPONSIVE_BREAKPOINT = 1200; // 响应式布局切换阈值
+    
+    // 基础尺寸常量 - 会根据屏幕大小动态调整
+    private double _logNormalHeight = 260; // 正常状态下日志区域高度
+    private double _logMinHeight = 120; // 日志区域最小高度
+    private double _logMaxHeight = 600; // 日志区域最大高度
+    private double _headerHeight = 100; // 标题栏高度
+    private double _footerHeight = 80; // 按钮区域高度
+    private double _responsiveBreakpoint = 1200; // 响应式布局切换阈值
+    
+    // 屏幕规格配置
+    private readonly ScreenConfig _screenConfig;
     
     // 拖拽相关变量
     private bool _isResizing = false; // 是否正在调整大小
@@ -32,8 +41,20 @@ public partial class MainWindow : Window
     
     public MainWindow()
     {
+        // 初始化屏幕配置
+        _screenConfig = DetectScreenConfiguration();
+        
+        // 根据屏幕大小调整各种尺寸参数
+        ApplyScreenBasedSizing();
+        
         InitializeComponent();
         DataContext = new MainWindowViewModel();
+        
+        // 设置窗口初始大小
+        SetInitialWindowSize();
+        
+        // 更新窗口标题以显示屏幕类型（仅用于调试）
+        UpdateWindowTitleWithScreenInfo();
         
         // 初始化主题
         InitializeTheme();
@@ -50,11 +71,315 @@ public partial class MainWindow : Window
         // 窗口加载完成后初始化
         this.Loaded += OnWindowLoaded;
         
-        // 订阅ViewModel的运行状态变化
+        // 窗口关闭时清理事件订阅
+        this.Closing += OnWindowClosing;
+        
+        // 订阅ViewModel的运行状态变化和日志更新事件
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            viewModel.LogUpdated += ViewModel_LogUpdated;
         }
+    }
+
+    /// <summary>
+    /// 屏幕配置类
+    /// </summary>
+    private class ScreenConfig
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public double ScaleFactor { get; set; }
+        public ScreenType Type { get; set; }
+    }
+    
+    /// <summary>
+    /// 屏幕类型枚举
+    /// </summary>
+    private enum ScreenType
+    {
+        HD1080P,    // 1920x1080
+        QHD2K,      // 2560x1440
+        UHD4K,      // 3840x2160
+        Ultrawide,  // 超宽屏
+        Small       // 小屏幕
+    }
+    
+    /// <summary>
+    /// 检测屏幕配置
+    /// </summary>
+    /// <returns>屏幕配置信息</returns>
+    private ScreenConfig DetectScreenConfiguration()
+    {
+        var config = new ScreenConfig();
+        
+        try
+        {
+            var screens = this.Screens?.All;
+            if (screens != null && screens.Count > 0)
+            {
+                var primaryScreen = screens.FirstOrDefault(s => s.IsPrimary) ?? screens.First();
+                config.Width = primaryScreen.Bounds.Width;
+                config.Height = primaryScreen.Bounds.Height;
+                config.ScaleFactor = primaryScreen.Scaling;
+            }
+            else
+            {
+                // 无法获取屏幕信息时的默认值
+                config.Width = 1920;
+                config.Height = 1080;
+                config.ScaleFactor = 1.0;
+            }
+        }
+        catch
+        {
+            // 出错时使用默认值
+            config.Width = 1920;
+            config.Height = 1080;
+            config.ScaleFactor = 1.0;
+        }
+        
+        // 确定屏幕类型
+        if (config.Width >= 3840 && config.Height >= 2160)
+        {
+            config.Type = ScreenType.UHD4K;
+        }
+        else if (config.Width >= 2560 && config.Height >= 1440)
+        {
+            config.Type = ScreenType.QHD2K;
+        }
+        else if (config.Width >= 2560 && config.Height < 1440)
+        {
+            config.Type = ScreenType.Ultrawide;
+        }
+        else if (config.Width >= 1920 && config.Height >= 1080)
+        {
+            config.Type = ScreenType.HD1080P;
+        }
+        else
+        {
+            config.Type = ScreenType.Small;
+        }
+        
+        return config;
+    }
+    
+    /// <summary>
+    /// 根据屏幕类型应用相应的尺寸设置
+    /// </summary>
+    private void ApplyScreenBasedSizing()
+    {
+        switch (_screenConfig.Type)
+        {
+            case ScreenType.UHD4K:
+                // 4K屏幕 - 保持原有大小
+                _logNormalHeight = 260;
+                _logMinHeight = 120;
+                _logMaxHeight = 600;
+                _headerHeight = 100;
+                _footerHeight = 80;
+                _responsiveBreakpoint = 1200;
+                break;
+                
+            case ScreenType.QHD2K:
+                // 2K屏幕 - 稍微缩小
+                _logNormalHeight = 220;
+                _logMinHeight = 100;
+                _logMaxHeight = 500;
+                _headerHeight = 85;
+                _footerHeight = 70;
+                _responsiveBreakpoint = 1000;
+                break;
+                
+            case ScreenType.HD1080P:
+                // 1080P屏幕 - 显著缩小
+                _logNormalHeight = 180;
+                _logMinHeight = 80;
+                _logMaxHeight = 400;
+                _headerHeight = 70;
+                _footerHeight = 60;
+                _responsiveBreakpoint = 800;
+                break;
+                
+            case ScreenType.Ultrawide:
+                // 超宽屏 - 适中设置，重点是宽度利用
+                _logNormalHeight = 200;
+                _logMinHeight = 90;
+                _logMaxHeight = 450;
+                _headerHeight = 75;
+                _footerHeight = 65;
+                _responsiveBreakpoint = 1000;
+                break;
+                
+            case ScreenType.Small:
+                // 小屏幕 - 最小化设置
+                _logNormalHeight = 150;
+                _logMinHeight = 60;
+                _logMaxHeight = 300;
+                _headerHeight = 60;
+                _footerHeight = 50;
+                _responsiveBreakpoint = 700;
+                break;
+        }
+        
+        // 应用动态字体和间距缩放
+        ApplyDynamicScaling();
+    }
+    
+    /// <summary>
+    /// 应用动态字体和间距缩放
+    /// </summary>
+    private void ApplyDynamicScaling()
+    {
+        // 根据屏幕类型确定缩放因子
+        double fontScale = 1.0;
+        double spacingScale = 1.0;
+        
+        switch (_screenConfig.Type)
+        {
+            case ScreenType.UHD4K:
+                fontScale = 1.0;
+                spacingScale = 1.0;
+                break;
+            case ScreenType.QHD2K:
+                fontScale = 0.9;
+                spacingScale = 0.9;
+                break;
+            case ScreenType.HD1080P:
+                fontScale = 0.85;
+                spacingScale = 0.8;
+                break;
+            case ScreenType.Ultrawide:
+                fontScale = 0.9;
+                spacingScale = 0.85;
+                break;
+            case ScreenType.Small:
+                fontScale = 0.8;
+                spacingScale = 0.7;
+                break;
+        }
+        
+        // 在窗口加载后应用缩放
+        this.Loaded += (s, e) => ApplyFontAndSpacingScale(fontScale, spacingScale);
+    }
+    
+    /// <summary>
+    /// 应用字体和间距缩放
+    /// </summary>
+    /// <param name="fontScale">字体缩放因子</param>
+    /// <param name="spacingScale">间距缩放因子</param>
+    private void ApplyFontAndSpacingScale(double fontScale, double spacingScale)
+    {
+        // 更新主题资源中的字体大小
+        if (this.Resources.TryGetResource("DefaultFontSize", null, out var defaultFontSize) && defaultFontSize is double)
+        {
+            this.Resources["DefaultFontSize"] = (double)defaultFontSize * fontScale;
+        }
+        
+        // 调整特定元素的大小
+        var headerBorder = this.FindControl<Border>("HeaderBorder");
+        if (headerBorder != null)
+        {
+            var currentPadding = headerBorder.Padding;
+            headerBorder.Padding = new Thickness(
+                currentPadding.Left * spacingScale,
+                currentPadding.Top * spacingScale,
+                currentPadding.Right * spacingScale,
+                currentPadding.Bottom * spacingScale
+            );
+        }
+        
+        var footerBorder = this.FindControl<Border>("FooterBorder");
+        if (footerBorder != null)
+        {
+            var currentPadding = footerBorder.Padding;
+            footerBorder.Padding = new Thickness(
+                currentPadding.Left * spacingScale,
+                currentPadding.Top * spacingScale,
+                currentPadding.Right * spacingScale,
+                currentPadding.Bottom * spacingScale
+            );
+        }
+    }
+    
+    /// <summary>
+    /// 设置窗口初始大小
+    /// </summary>
+    private void SetInitialWindowSize()
+    {
+        double windowWidth, windowHeight, minWidth, minHeight;
+        
+        switch (_screenConfig.Type)
+        {
+            case ScreenType.UHD4K:
+                windowWidth = 1000;
+                windowHeight = 950;
+                minWidth = 1000;
+                minHeight = 700;
+                break;
+                
+            case ScreenType.QHD2K:
+                windowWidth = 900;
+                windowHeight = 800;
+                minWidth = 850;
+                minHeight = 600;
+                break;
+                
+            case ScreenType.HD1080P:
+                windowWidth = 800;
+                windowHeight = 700;
+                minWidth = 750;
+                minHeight = 550;
+                break;
+                
+            case ScreenType.Ultrawide:
+                windowWidth = 950;
+                windowHeight = 750;
+                minWidth = 900;
+                minHeight = 580;
+                break;
+                
+            case ScreenType.Small:
+                windowWidth = 700;
+                windowHeight = 600;
+                minWidth = 650;
+                minHeight = 500;
+                break;
+                
+            default:
+                windowWidth = 800;
+                windowHeight = 700;
+                minWidth = 750;
+                minHeight = 550;
+                break;
+        }
+        
+        // 确保窗口不会超出屏幕范围
+        var maxWidth = _screenConfig.Width * 0.9; // 屏幕宽度的90%
+        var maxHeight = _screenConfig.Height * 0.9; // 屏幕高度的90%
+        
+        this.Width = Math.Min(windowWidth, maxWidth);
+        this.Height = Math.Min(windowHeight, maxHeight);
+        this.MinWidth = Math.Min(minWidth, maxWidth * 0.8);
+        this.MinHeight = Math.Min(minHeight, maxHeight * 0.8);
+    }
+    
+    /// <summary>
+    /// 更新窗口标题以显示屏幕信息（调试用）
+    /// </summary>
+    private void UpdateWindowTitleWithScreenInfo()
+    {
+        var screenTypeText = _screenConfig.Type switch
+        {
+            ScreenType.UHD4K => "4K",
+            ScreenType.QHD2K => "2K", 
+            ScreenType.HD1080P => "1080P",
+            ScreenType.Ultrawide => "超宽屏",
+            ScreenType.Small => "小屏幕",
+            _ => "未知"
+        };
+        
+        this.Title = $"抢房好好好 - Avalonia版 Ver 2.1.0 By: hp [{screenTypeText}:{_screenConfig.Width}x{_screenConfig.Height}]";
     }
 
     /// <summary>
@@ -67,6 +392,27 @@ public partial class MainWindow : Window
         
         // 初始化响应式布局
         UpdateResponsiveLayout();
+    }
+    
+    /// <summary>
+    /// 窗口关闭事件 - 清理事件订阅
+    /// </summary>
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        try
+        {
+            // 取消ViewModel事件订阅，避免内存泄漏
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                viewModel.LogUpdated -= ViewModel_LogUpdated;
+            }
+        }
+        catch (Exception ex)
+        {
+            // 忽略清理过程中的错误
+            System.Diagnostics.Debug.WriteLine($"窗口关闭清理事件订阅失败: {ex.Message}");
+        }
     }
     
     /// <summary>
@@ -115,7 +461,7 @@ public partial class MainWindow : Window
             var newHeight = _initialHeight - deltaY;
             
             // 限制在最小和最大高度之间
-            newHeight = Math.Max(LOG_MIN_HEIGHT, Math.Min(LOG_MAX_HEIGHT, newHeight));
+            newHeight = Math.Max(_logMinHeight, Math.Min(_logMaxHeight, newHeight));
             
             var logArea = this.FindControl<Border>("LogArea");
             if (logArea != null)
@@ -167,6 +513,66 @@ public partial class MainWindow : Window
                     CollapseLogAreaToBottom();
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// ViewModel日志更新事件处理 - 自动滚动到底部
+    /// </summary>
+    private void ViewModel_LogUpdated(object? sender, EventArgs e)
+    {
+        // 延迟执行滚动操作，确保UI渲染完成
+        Dispatcher.UIThread.Post(() =>
+        {
+            ScrollLogToBottom();
+        }, DispatcherPriority.Loaded); // 使用Loaded优先级确保在UI渲染后执行
+    }
+    
+    /// <summary>
+    /// 滚动日志到底部的专用方法
+    /// </summary>
+    private async void ScrollLogToBottom()
+    {
+        try
+        {
+            // 稍微延迟，确保文本已经被添加到UI
+            await Task.Delay(50);
+            
+            var logTextBox = this.FindControl<TextBox>("LogTextBox");
+            if (logTextBox != null && !string.IsNullOrEmpty(logTextBox.Text))
+            {
+                // 方法1：设置光标位置到末尾，这通常能触发滚动
+                logTextBox.CaretIndex = logTextBox.Text.Length;
+                
+                // 方法2：设置选择区域到末尾
+                logTextBox.SelectionStart = logTextBox.Text.Length;
+                logTextBox.SelectionEnd = logTextBox.Text.Length;
+                
+                // 给UI一点时间来处理光标移动
+                await Task.Delay(20);
+            }
+            
+            // 方法3：直接操作ScrollViewer
+            var logScrollViewer = this.FindControl<ScrollViewer>("LogScrollViewer");
+            if (logScrollViewer != null)
+            {
+                // 使用多种方法确保滚动生效
+                logScrollViewer.ScrollToEnd();
+                
+                // 强制刷新并重新计算
+                await Task.Delay(10);
+                
+                // 直接设置到最大偏移位置
+                if (logScrollViewer.Extent.Height > logScrollViewer.Viewport.Height)
+                {
+                    var maxOffset = logScrollViewer.Extent.Height - logScrollViewer.Viewport.Height;
+                    logScrollViewer.Offset = new Avalonia.Vector(0, maxOffset);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"滚动日志到底部失败: {ex.Message}");
         }
     }
 
@@ -333,7 +739,9 @@ public partial class MainWindow : Window
         
         if (logArea != null)
         {
-            logArea.Height = LOG_NORMAL_HEIGHT;
+            logArea.Height = _logNormalHeight;
+            logArea.MinHeight = _logMinHeight;
+            logArea.MaxHeight = _logMaxHeight;
         }
         if (statusText != null)
         {
@@ -411,8 +819,8 @@ public partial class MainWindow : Window
             
             // 计算窗口可用高度，让日志区域占据配置项的全部空间
             double windowHeight = this.Height;
-            double headerHeight = HEADER_HEIGHT; // 顶部标题栏高度
-            double footerHeight = FOOTER_HEIGHT; // 底部按钮区域高度
+            double headerHeight = _headerHeight; // 顶部标题栏高度
+            double footerHeight = _footerHeight; // 底部按钮区域高度
             double availableHeight = windowHeight - headerHeight - footerHeight - 48; // 48为边距
             
             double logHeight = Math.Max(400, availableHeight); // 最小400像素
@@ -455,7 +863,7 @@ public partial class MainWindow : Window
             // 恢复日志区域的默认高度
             if (logArea != null)
             {
-                logArea.Height = LOG_NORMAL_HEIGHT;
+                logArea.Height = _logNormalHeight;
             }
             
             // 更新状态文本
@@ -636,11 +1044,30 @@ public partial class MainWindow : Window
         var singleColumnLayout = this.FindControl<StackPanel>("SingleColumnLayout");
         var doubleColumnLayout = this.FindControl<Grid>("DoubleColumnLayout");
         
-        if (currentWidth >= RESPONSIVE_BREAKPOINT)
+        if (currentWidth >= _responsiveBreakpoint)
         {
             // 使用双列布局
             if (singleColumnLayout != null) singleColumnLayout.IsVisible = false;
-            if (doubleColumnLayout != null) doubleColumnLayout.IsVisible = true;
+            if (doubleColumnLayout != null) 
+            {
+                doubleColumnLayout.IsVisible = true;
+                
+                // 根据屏幕大小调整左列宽度
+                if (doubleColumnLayout.ColumnDefinitions.Count > 0)
+                {
+                    double leftColumnWidth = _screenConfig.Type switch
+                    {
+                        ScreenType.UHD4K => 600,
+                        ScreenType.QHD2K => 500,
+                        ScreenType.HD1080P => 420,
+                        ScreenType.Ultrawide => 550,
+                        ScreenType.Small => 380,
+                        _ => 450
+                    };
+                    
+                    doubleColumnLayout.ColumnDefinitions[0].Width = new GridLength(leftColumnWidth);
+                }
+            }
             
             // 同步折叠状态从单列到双列
             SyncCollapsibleStates(fromSingle: true);
@@ -702,4 +1129,5 @@ public partial class MainWindow : Window
             }
         }
     }
+
 }

@@ -8,9 +8,9 @@
         x:Class="AvaRoomAssign.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/house.ico"
-        Title="抢房好好好 - Avalonia版 Ver 2.0.0 By: hp"
-        Width="1000" Height="950"
-        MinWidth="1000" MinHeight="700"
+        Title="抢房好好好 - Avalonia版 Ver 2.1.0 By: hp"
+        Width="800" Height="700"
+        MinWidth="750" MinHeight="550"
         WindowStartupLocation="CenterScreen"
         CanResize="true">
 
@@ -22,6 +22,7 @@
         <models:BoolToInverseBoolConverter x:Key="BoolToInverseConverter"/>
         <models:IntToBoolConverter x:Key="IntToBoolConverter"/>
         <models:MultiBoolConverter x:Key="MultiBoolConverter"/>
+        <models:BoolToTextConverter x:Key="BoolToTextConverter" TrueText="手动房源ID" FalseText="社区条件设置"/>
         
         <!-- 浅色主题资源 - 现代清新配色 -->
         <SolidColorBrush x:Key="ThemeBackground" Color="#F7F9FC"/>
@@ -510,7 +511,7 @@
         <Border Grid.Row="0" 
                 BorderBrush="{DynamicResource ThemeBorder}" 
                 BorderThickness="0,0,0,1"
-                Padding="24,24"
+                Padding="20,20"
                 x:Name="HeaderBorder">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
@@ -529,7 +530,7 @@
                         <TextBlock Classes="modern-title" Text="🏠" FontSize="32"/>
                         <TextBlock Classes="modern-title" Text="抢房好好好"/>
                     </StackPanel>
-                    <TextBlock Classes="modern-subtitle" Text="Avalonia版 Ver 2.0.0 By: hp - 自动化抢公租房"/>
+                    <TextBlock Classes="modern-subtitle" Text="Ver 2.1.0 - 自动化抢公租房/人才公寓，祝大家抢房顺利！"/>
                 </StackPanel>
 
                 <Button Grid.Column="1" 
@@ -545,7 +546,7 @@
         <ScrollViewer Grid.Row="1" 
                       VerticalScrollBarVisibility="Auto" 
                       HorizontalScrollBarVisibility="Disabled"
-                      Padding="16,16,16,0"
+                      Padding="12,12,12,0"
                       x:Name="ConfigScrollViewer">
             <!-- 响应式容器 -->
             <Panel x:Name="ResponsiveContainer">
@@ -774,108 +775,184 @@
                         </Grid>
                     </Border>
 
-                    <!-- 社区条件设置 -->
+                    <!-- 房源设置 (社区条件设置/手动房源ID) -->
                     <Border Classes="collapsible-card" HorizontalAlignment="Stretch">
                         <Grid RowDefinitions="Auto,Auto">
-                            <Button Grid.Row="0" 
-                                    Classes="collapse-header"
-                                    Click="OnCommunityToggle"
-                                    x:Name="CommunityToggleSingle">
-                                <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <TextBlock Text="🏘️" FontSize="20" VerticalAlignment="Center"/>
-                                    <TextBlock Text="社区条件设置" VerticalAlignment="Center"/>
-                                    <Border Classes="success-icon"
-                                            Width="28" Height="28" 
-                                            VerticalAlignment="Center"
-                                            Margin="12,0,0,0"
-                                            ToolTip.Tip="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选">
-                                        <TextBlock Text="?"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   FontWeight="Bold"
-                                                   FontSize="14"
-                                                   Foreground="White"/>
-                                    </Border>
-                                    <TextBlock Text="▶" 
-                                               x:Name="CommunityIconSingle"
-                                               FontSize="14" 
-                                               VerticalAlignment="Center" 
-                                               Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            <!-- 面板标题行 -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <Button Grid.Column="0" 
+                                        Classes="collapse-header"
+                                        Click="OnCommunityToggle"
+                                        x:Name="CommunityToggleSingle"
+                                        HorizontalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <TextBlock Text="🏘️" FontSize="20" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding UseManualRoomIds, Converter={StaticResource BoolToTextConverter}}" VerticalAlignment="Center"/>
+                                        <Border Classes="success-icon"
+                                                Width="28" Height="28" 
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0"
+                                                ToolTip.Tip="配置房源选择条件">
+                                            <TextBlock Text="?"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       FontSize="14"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <TextBlock Text="▶" 
+                                                   x:Name="CommunityIconSingle"
+                                                   FontSize="14" 
+                                                   VerticalAlignment="Center" 
+                                                   Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <!-- 切换开关放在最右边 (仅在HTTP发包模式下显示) -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0">
+                                    <StackPanel.IsVisible>
+                                        <Binding Path="SelectedOperationMode" Converter="{StaticResource IntToBoolConverter}" ConverterParameter="1"/>
+                                    </StackPanel.IsVisible>
+                                    <TextBlock Text="社区条件" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                    <ToggleSwitch IsChecked="{Binding UseManualRoomIds}" 
+                                                  IsEnabled="{Binding !IsRunning}"
+                                                  OffContent=""
+                                                  OnContent=""
+                                                  ToolTip.Tip="切换房源设置模式：关闭=社区条件设置，开启=手动房源ID"/>
+                                    <TextBlock Text="手动ID" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
                                 </StackPanel>
-                            </Button>
+                            </Grid>
 
                             <StackPanel Grid.Row="1" 
                                         x:Name="CommunityContentSingle"
                                         Spacing="20" 
                                         Margin="24,0,24,24"
                                         IsVisible="False">
-                                <Button Classes="modern-primary" 
-                                        Content="➕ 添加条件" 
-                                        Command="{Binding AddCommunityCommand}" 
-                                        IsEnabled="{Binding !IsRunning}"
-                                        HorizontalAlignment="Left"/>
+                                
+                                <!-- 社区条件设置内容 -->
+                                <StackPanel IsVisible="{Binding !UseManualRoomIds}">
+                                    <Button Classes="modern-primary" 
+                                            Content="➕ 添加条件" 
+                                            Command="{Binding AddCommunityCommand}" 
+                                            IsEnabled="{Binding !IsRunning}"
+                                            HorizontalAlignment="Left"/>
 
-                                <!-- 单列布局DataGrid -->
-                                <DataGrid Classes="modern"
-                                          ItemsSource="{Binding CommunityConditions}"
-                                          CanUserReorderColumns="False"
-                                          CanUserResizeColumns="False"
-                                          CanUserSortColumns="False"
-                                          GridLinesVisibility="None"
-                                          HeadersVisibility="Column"
-                                          MinHeight="200"
-                                          Background="Transparent"
-                                          BorderThickness="0"
-                                          CornerRadius="12"
-                                          AutoGenerateColumns="False"
-                                          IsEnabled="{Binding !IsRunning}"
-                                          Margin="0,8"
-                                          HorizontalAlignment="Stretch">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="2*" MinWidth="150" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="1*" MinWidth="80" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="层数" Binding="{Binding FloorRange}" Width="1*" MinWidth="100" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="价格" Binding="{Binding MaxPrice}" Width="1*" MinWidth="100" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="面积" Binding="{Binding LeastArea}" Width="1*" MinWidth="100" CanUserSort="False"/>
-                                        <DataGridTemplateColumn Header="房型" Width="1*" MinWidth="100" CanUserSort="False">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <ComboBox SelectedItem="{Binding HouseTypeDescription}"
-                                                              ItemsSource="{Binding $parent[Window].DataContext.HouseTypes}"
-                                                              HorizontalAlignment="Stretch"
-                                                              Margin="4,2"
-                                                              FontSize="12"
-                                                              BorderThickness="1"
-                                                              Padding="6,4"
-                                                              IsEnabled="{Binding $parent[Window].DataContext.IsRunning, Converter={StaticResource BoolToInverseConverter}}"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="操作" Width="120" MinWidth="100" CanUserSort="False">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <Button Classes="modern-danger" 
-                                                            Content="删除" 
-                                                            FontSize="12"
-                                                            Padding="8,4"
-                                                            Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
-                                                            CommandParameter="{Binding}"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                                                            <!-- 单列布局DataGrid -->
+                                        <DataGrid Classes="modern"
+                                                  ItemsSource="{Binding CommunityConditions}"
+                                                  CanUserReorderColumns="False"
+                                                  CanUserResizeColumns="False"
+                                                  CanUserSortColumns="False"
+                                                  GridLinesVisibility="None"
+                                                  HeadersVisibility="Column"
+                                                  MinHeight="200"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  CornerRadius="12"
+                                                  AutoGenerateColumns="False"
+                                                  IsEnabled="{Binding !IsRunning}"
+                                                  Margin="0,8"
+                                                  HorizontalAlignment="Stretch">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="2*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="0.8*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="层数" Binding="{Binding FloorRange}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="价格" Binding="{Binding MaxPrice}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="面积" Binding="{Binding LeastArea}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTemplateColumn Header="房型" Width="1*" CanUserSort="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <ComboBox SelectedItem="{Binding HouseTypeDescription}"
+                                                                      ItemsSource="{Binding $parent[Window].DataContext.HouseTypes}"
+                                                                      HorizontalAlignment="Stretch"
+                                                                      Margin="4,2"
+                                                                      FontSize="12"
+                                                                      BorderThickness="1"
+                                                                      Padding="6,4"
+                                                                      IsEnabled="{Binding $parent[Window].DataContext.IsRunning, Converter={StaticResource BoolToInverseConverter}}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="操作" Width="1.2*" CanUserSort="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Button Classes="modern-danger" 
+                                                                    Content="删除" 
+                                                                    FontSize="12"
+                                                                    Padding="8,4"
+                                                                    Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    
+                                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                        <Border Classes="info-icon"
+                                                Width="24" Height="24" 
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="i"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       FontSize="14"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <TextBlock Text="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选"
+                                                   Foreground="{DynamicResource ThemeTextSecondary}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                
+                                <!-- 手动房源ID输入内容 -->
+                                <StackPanel IsVisible="{Binding UseManualRoomIds}" Spacing="16">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Classes="modern-label" Text="房源ID列表（每行一个或用逗号分隔）"/>
+                                        <TextBox Text="{Binding ManualRoomIds}"
+                                                 IsEnabled="{Binding !IsRunning}"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 MinHeight="120"
+                                                 MaxHeight="300"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 Watermark="例如：6b9cc3b2-ea56-490d-aad1-a9d70101e32f"
+                                                 HorizontalAlignment="Stretch"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Classes="warning-icon"
+                                                Width="24" Height="24" 
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="!"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       FontSize="14"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <TextBlock Text="使用手动房源ID时，将忽略社区条件设置和预获取的房间ID。请确保ID格式正确。"
+                                                   Foreground="{DynamicResource ThemeWarning}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                     </Border>
+
+
                 </StackPanel>
                 
-                <!-- 双列布局 (窗口宽度 >= 1200px) -->
+                <!-- 双列布局 (窗口宽度 >= 断点) -->
                 <Grid x:Name="DoubleColumnLayout" 
                       IsVisible="False"
                       HorizontalAlignment="Stretch">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="600"/>
+                        <ColumnDefinition Width="500"/>
                         <ColumnDefinition Width="20"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
@@ -1098,100 +1175,171 @@
                         </Border>
                     </StackPanel>
                     
-                    <!-- 右侧社区条件设置面板 -->
+                    <!-- 右侧房源设置面板 -->
                     <Border Grid.Column="2" Classes="collapsible-card">
                         <Grid RowDefinitions="Auto,Auto">
-                            <Button Grid.Row="0" 
-                                    Classes="collapse-header"
-                                    Click="OnCommunityToggle"
-                                    x:Name="CommunityToggle">
-                                <StackPanel Orientation="Horizontal" Spacing="16">
-                                    <TextBlock Text="🏘️" FontSize="20" VerticalAlignment="Center"/>
-                                    <TextBlock Text="社区条件设置" VerticalAlignment="Center"/>
-                                    <Border Classes="success-icon"
-                                            Width="28" Height="28" 
-                                            VerticalAlignment="Center"
-                                            Margin="12,0,0,0"
-                                            ToolTip.Tip="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选">
-                                        <TextBlock Text="?"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   FontWeight="Bold"
-                                                   FontSize="14"
-                                                   Foreground="White"/>
-                                    </Border>
-                                    <TextBlock Text="▶" 
-                                               x:Name="CommunityIcon"
-                                               FontSize="14" 
-                                               VerticalAlignment="Center" 
-                                               Foreground="{DynamicResource ThemeTextSecondary}"/>
+                            <!-- 面板标题行 -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                <Button Grid.Column="0" 
+                                        Classes="collapse-header"
+                                        Click="OnCommunityToggle"
+                                        x:Name="CommunityToggle"
+                                        HorizontalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <TextBlock Text="🏘️" FontSize="20" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding UseManualRoomIds, Converter={StaticResource BoolToTextConverter}}" VerticalAlignment="Center"/>
+                                        <Border Classes="success-icon"
+                                                Width="28" Height="28" 
+                                                VerticalAlignment="Center"
+                                                Margin="12,0,0,0"
+                                                ToolTip.Tip="配置房源选择条件">
+                                            <TextBlock Text="?"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       FontSize="14"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <TextBlock Text="▶" 
+                                                   x:Name="CommunityIcon"
+                                                   FontSize="14" 
+                                                   VerticalAlignment="Center" 
+                                                   Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <!-- 切换开关放在最右边 -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12,0">
+                                    <TextBlock Text="社区条件" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                    <ToggleSwitch IsChecked="{Binding UseManualRoomIds}" 
+                                                  IsEnabled="{Binding !IsRunning}"
+                                                  OffContent=""
+                                                  OnContent=""
+                                                  ToolTip.Tip="切换房源设置模式：关闭=社区条件设置，开启=手动房源ID"/>
+                                    <TextBlock Text="手动ID" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextSecondary}"/>
                                 </StackPanel>
-                            </Button>
+                            </Grid>
 
-                            <StackPanel Grid.Row="1" 
-                                        x:Name="CommunityContent"
-                                        Spacing="20" 
-                                        Margin="24,0,24,24"
-                                        IsVisible="False">
-                                <Button Classes="modern-primary" 
-                                        Content="➕ 添加条件" 
-                                        Command="{Binding AddCommunityCommand}" 
-                                        IsEnabled="{Binding !IsRunning}"
-                                        HorizontalAlignment="Left"/>
+                                <StackPanel Grid.Row="1" 
+                                            x:Name="CommunityContent"
+                                            Spacing="20" 
+                                            Margin="24,0,24,24"
+                                            IsVisible="False">
+                                    
+                                    <!-- 社区条件设置内容 -->
+                                    <StackPanel IsVisible="{Binding !UseManualRoomIds}">
+                                        <Button Classes="modern-primary" 
+                                                Content="➕ 添加条件" 
+                                                Command="{Binding AddCommunityCommand}" 
+                                                IsEnabled="{Binding !IsRunning}"
+                                                HorizontalAlignment="Left"/>
 
-                                <!-- 双列布局的完全响应式DataGrid -->
-                                <DataGrid Classes="modern"
-                                          ItemsSource="{Binding CommunityConditions}"
-                                          CanUserReorderColumns="False"
-                                          CanUserResizeColumns="False"
-                                          CanUserSortColumns="False"
-                                          GridLinesVisibility="None"
-                                          HeadersVisibility="Column"
-                                          MinHeight="200"
-                                          Background="Transparent"
-                                          BorderThickness="0"
-                                          CornerRadius="12"
-                                          AutoGenerateColumns="False"
-                                          IsEnabled="{Binding !IsRunning}"
-                                          Margin="0,8"
-                                          HorizontalAlignment="Stretch">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="*" MinWidth="120" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="80" MinWidth="60" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="层数" Binding="{Binding FloorRange}" Width="100" MinWidth="80" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="价格" Binding="{Binding MaxPrice}" Width="120" MinWidth="100" CanUserSort="False"/>
-                                        <DataGridTextColumn Header="面积" Binding="{Binding LeastArea}" Width="120" MinWidth="100" CanUserSort="False"/>
-                                        <DataGridTemplateColumn Header="房型" Width="100" MinWidth="80" CanUserSort="False">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <ComboBox SelectedItem="{Binding HouseTypeDescription}"
-                                                              ItemsSource="{Binding $parent[Window].DataContext.HouseTypes}"
-                                                              HorizontalAlignment="Stretch"
-                                                              Margin="4,2"
-                                                              FontSize="12"
-                                                              BorderThickness="1"
-                                                              Padding="6,4"
-                                                              IsEnabled="{Binding $parent[Window].DataContext.IsRunning, Converter={StaticResource BoolToInverseConverter}}"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="操作" Width="90" MinWidth="80" CanUserSort="False">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <Button Classes="modern-danger" 
-                                                            Content="删除" 
-                                                            FontSize="12"
-                                                            Padding="8,4"
-                                                            Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
-                                                            CommandParameter="{Binding}"/>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                                        <!-- 双列布局DataGrid -->
+                                        <DataGrid Classes="modern"
+                                                  ItemsSource="{Binding CommunityConditions}"
+                                                  CanUserReorderColumns="False"
+                                                  CanUserResizeColumns="False"
+                                                  CanUserSortColumns="False"
+                                                  GridLinesVisibility="None"
+                                                  HeadersVisibility="Column"
+                                                  MinHeight="200"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  CornerRadius="12"
+                                                  AutoGenerateColumns="False"
+                                                  IsEnabled="{Binding !IsRunning}"
+                                                  Margin="0,8"
+                                                  HorizontalAlignment="Stretch">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="小区名称" Binding="{Binding CommunityName}" Width="2*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="幢号" Binding="{Binding BuildingNo}" Width="0.8*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="层数" Binding="{Binding FloorRange}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="价格" Binding="{Binding MaxPrice}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTextColumn Header="面积" Binding="{Binding LeastArea}" Width="1*" CanUserSort="False"/>
+                                                <DataGridTemplateColumn Header="房型" Width="1*" CanUserSort="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <ComboBox SelectedItem="{Binding HouseTypeDescription}"
+                                                                      ItemsSource="{Binding $parent[Window].DataContext.HouseTypes}"
+                                                                      HorizontalAlignment="Stretch"
+                                                                      Margin="4,2"
+                                                                      FontSize="12"
+                                                                      BorderThickness="1"
+                                                                      Padding="6,4"
+                                                                      IsEnabled="{Binding $parent[Window].DataContext.IsRunning, Converter={StaticResource BoolToInverseConverter}}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="操作" Width="1*" CanUserSort="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Button Classes="modern-danger" 
+                                                                    Content="删除" 
+                                                                    FontSize="12"
+                                                                    Padding="8,4"
+                                                                    Command="{Binding $parent[Window].DataContext.DeleteCommunityCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                            <Border Classes="info-icon"
+                                                    Width="24" Height="24" 
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="i"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="Bold"
+                                                           FontSize="14"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Text="小区为必填，层数可以范围选择，例如2-4,6(注意要英文逗号)，层数不填即不筛选，其他如果填0则默认为不筛选"
+                                                       Foreground="{DynamicResource ThemeTextSecondary}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- 手动房源ID输入内容 -->
+                                    <StackPanel IsVisible="{Binding UseManualRoomIds}" Spacing="16">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Classes="modern-label" Text="房源ID列表（每行一个或用逗号分隔）"/>
+                                            <TextBox Text="{Binding ManualRoomIds}"
+                                                     IsEnabled="{Binding !IsRunning}"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     MinHeight="120"
+                                                     MaxHeight="300"
+                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                     Watermark="例如：6b9cc3b2-ea56-490d-aad1-a9d70101e32f"
+                                                     HorizontalAlignment="Stretch"/>
+                                        </StackPanel>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <Border Classes="warning-icon"
+                                                    Width="24" Height="24" 
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="!"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="Bold"
+                                                           FontSize="14"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Text="使用手动房源ID时，将忽略社区条件设置和预获取的房间ID。请确保ID格式正确。"
+                                                       Foreground="{DynamicResource ThemeWarning}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                 </Grid>
             </Panel>
         </ScrollViewer>
@@ -1199,11 +1347,11 @@
         <!-- 固定的日志输出区域 - 可手动拖拽调整高度 -->
         <Border Grid.Row="2" 
                 Classes="modern-card"
-                Margin="16,16,16,0"
+                Margin="12,12,12,0"
                 x:Name="LogArea"
-                Height="260"
-                MinHeight="120"
-                MaxHeight="600">
+                Height="180"
+                MinHeight="80"
+                MaxHeight="400">
             <Grid RowDefinitions="Auto,Auto,*">
                 <!-- 拖拽手柄区域 -->
                 <Border Grid.Row="0" 
@@ -1246,7 +1394,7 @@
         <Border Grid.Row="3" 
                 BorderBrush="{DynamicResource ThemeBorder}" 
                 BorderThickness="0,1,0,0"
-                Padding="16,20"
+                Padding="12,16"
                 x:Name="FooterBorder">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">

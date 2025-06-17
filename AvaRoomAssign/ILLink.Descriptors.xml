@@ -1,35 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <linker>
-  <!-- 保留整个应用程序集 -->
-  <assembly fullname="AvaRoomAssign" preserve="all" />
-  
-  <!-- 保留Model类的所有属性 -->
+  <!-- 最小化保留 - 仅保留JSON序列化和数据绑定必需的类型 -->
   <assembly fullname="AvaRoomAssign">
-    <type fullname="AvaRoomAssign.Models.HouseCondition" preserve="all" />
-    <type fullname="AvaRoomAssign.Models.AppConfig" preserve="all" />
-    <type fullname="AvaRoomAssign.Models.HouseConditionData" preserve="all" />
-    <type fullname="AvaRoomAssign.Models.HouseType" preserve="all" />
+    <!-- JSON序列化上下文 -->
     <type fullname="AvaRoomAssign.Models.ConfigJsonContext" preserve="all" />
-    <type fullname="AvaRoomAssign.ViewModels.MainWindowViewModel" preserve="all" />
-  </assembly>
-  
-  <!-- 保留System.ComponentModel的必要部分 -->
-  <assembly fullname="System.ComponentModel">
-    <type fullname="System.ComponentModel.INotifyPropertyChanged" preserve="all" />
-    <type fullname="System.ComponentModel.PropertyChangedEventArgs" preserve="all" />
-    <type fullname="System.ComponentModel.PropertyChangedEventHandler" preserve="all" />
-  </assembly>
-  
-  <!-- 保留集合类型 -->
-  <assembly fullname="System.Collections">
-    <type fullname="System.Collections.ObjectModel.ObservableCollection`1" preserve="all" />
-    <type fullname="System.Collections.Specialized.INotifyCollectionChanged" preserve="all" />
-  </assembly>
-  
-  <!-- 保留JSON序列化相关 -->
-  <assembly fullname="System.Text.Json">
-    <type fullname="System.Text.Json.JsonSerializer" preserve="all" />
-    <type fullname="System.Text.Json.JsonSerializerContext" preserve="all" />
-    <type fullname="System.Text.Json.Serialization.JsonSerializableAttribute" preserve="all" />
+    <!-- 数据转换器 -->
+    <type fullname="AvaRoomAssign.Models.BoolToInverseBoolConverter" preserve="methods" />
+    <type fullname="AvaRoomAssign.Models.IntToBoolConverter" preserve="methods" />
+    <type fullname="AvaRoomAssign.Models.MultiBoolConverter" preserve="methods" />
+    <type fullname="AvaRoomAssign.Models.BoolToTextConverter" preserve="methods" />
   </assembly>
 </linker> 

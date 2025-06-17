@@ -48,10 +48,11 @@ namespace AvaRoomAssign.Models
 
         public async Task RunAsync()
         {
-            if (string.IsNullOrWhiteSpace(_userAccount) || string.IsNullOrWhiteSpace(_userPassword) ||
+            // 检查是否同时提供了用户名密码和cookie
+            if ((string.IsNullOrWhiteSpace(_userAccount) || string.IsNullOrWhiteSpace(_userPassword)) && 
                 string.IsNullOrWhiteSpace(_cookie))
             {
-                LogManager.Error("用户名、密码和cookie不能为空");
+                LogManager.Error("请提供用户名和密码，或者提供cookie");
                 return;
             }
 
@@ -171,7 +172,8 @@ namespace AvaRoomAssign.Models
                     ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", btn);
                     Thread.Sleep(_clickIntervalMs);
                     var iframe = wait.Until(ExpectedConditions.ElementExists(By.Id("iframeDialog")));
-                    if (iframe.GetAttribute("src").Contains("ApplyIDs"))
+                    var src = iframe.GetAttribute("src");
+                    if (src != null && src.Contains("ApplyIDs"))
                     {
                         LogManager.Success("成功进入选房页面！");
                         break;
@@ -189,7 +191,7 @@ namespace AvaRoomAssign.Models
                         var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(2));
                         var iframe = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("iframeDialog")));
                         var src = iframe.GetAttribute("src");
-                        if (!src.Contains("ApplyIDs")) continue;
+                        if (src == null || !src.Contains("ApplyIDs")) continue;
                         LogManager.Success("成功进入选房页面！");
                         break;
                     }

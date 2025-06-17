@@ -19,6 +19,8 @@ namespace AvaRoomAssign.Models
         private const int MaxRetryAttempts = 3; // 重试次数
         private const int RetryDelayMs = 200; // 重试间隔（毫秒）
 
+        private string _isApplyTalent = "1"; // 是否是人才公寓，1是，0不是
+
         public HttpSelector(
             string applierName,
             List<HouseCondition> communityList,
@@ -303,7 +305,8 @@ namespace AvaRoomAssign.Models
                 var node = doc.DocumentNode.SelectSingleNode($"//input[@name='{_applierName}']");
                 if (node?.Attributes["value"]?.Value is { } id && !string.IsNullOrEmpty(id))
                 {
-                    LogManager.Success($"成功获取申请人ID: {id}");
+                    _isApplyTalent = node?.Attributes["isapplytalent"]?.Value ?? "1";
+                    LogManager.Success($"成功获取申请人{_applierName}的ID: {id}，类型为{(_isApplyTalent == "1" ? "人才公寓" : "公租房")}");
                     return id;
                 }
 
@@ -346,27 +349,6 @@ namespace AvaRoomAssign.Models
             }
         }
 
-        /// <summary>
-        /// 同步版本的等待方法（保留兼容性，但已废弃）
-        /// </summary>
-        [Obsolete("请使用WaitForStartTimeAsync方法")]
-        private void WaitForStartTime()
-        {
-            while (!_cancellationToken.IsCancellationRequested)
-            {
-                var now = DateTime.Now;
-                var diff = _startTime - now;
-                if (diff.TotalSeconds <= 1)
-                {
-                    LogManager.Success($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，开始抢！");
-                    return;
-                }
-
-                LogManager.Info($"当前时间 {now:yyyy-MM-dd HH:mm:ss}，距离选房开始还有 {diff}");
-                Thread.Sleep(1000);
-            }
-        }
-
         private async Task<string?> FindMatchingRoomIdAsync(HttpClient client, string applyerId,
             HouseCondition condition)
         {
@@ -376,9 +358,9 @@ namespace AvaRoomAssign.Models
                 var data = new Dictionary<string, string>
                 {
                     ["ApplyIDs"] = applyerId,
-                    ["IsApplyTalent"] = "0",
+                    ["IsApplyTalent"] = "1",
                     ["type"] = "1",
-                    ["SearchEntity._PageSize"] = "500",
+                    ["SearchEntity._PageSize"] = "300",
                     ["SearchEntity._PageIndex"] = "1",
                     ["SearchEntity._CommonSearchCondition"] = condition.CommunityName
                 };
@@ -456,7 +438,7 @@ namespace AvaRoomAssign.Models
                 var data = new Dictionary<string, string>
                 {
                     ["ApplyIDs"] = applyerId,
-                    ["IsApplyTalent"] = "0",
+                    ["IsApplyTalent"] = _isApplyTalent,
                     ["type"] = "1",
                     ["SearchEntity._PageSize"] = "500",
                     ["SearchEntity._PageIndex"] = "1",
@@ -667,6 +649,132 @@ namespace AvaRoomAssign.Models
             {
                 System.Diagnostics.Debug.WriteLine($"运行预获取选房流程时发生错误: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 使用手动输入的房间ID运行选房流程
+        /// </summary>
+        /// <param name="manualRoomIds">手动输入的房间ID字符串（支持换行符和逗号分隔）</param>
+        public async Task RunWithManualRoomIdsAsync(string manualRoomIds)
+        {
+            // 检验手动输入的房间ID是否为空合法
+            if (string.IsNullOrWhiteSpace(manualRoomIds))
+            {
+                LogManager.Error("未找到有效的房间ID，请检查输入格式");
+                return;
+            }
+
+            try
+            {
+                using var client = CreateHttpClient(_cookie);
+
+                var applierId = await GetApplierIdAsync(client);
+                if (applierId == null)
+                {
+                    LogManager.Error("获取申请人ID失败，流程终止");
+                    return;
+                }
+
+                // 解析手动输入的房间ID
+                var roomIds = ParseManualRoomIds(manualRoomIds);
+                if (roomIds.Count == 0)
+                {
+                    LogManager.Error("未找到有效的房间ID，请检查输入格式");
+                    return;
+                }
+
+                LogManager.Success($"解析到 {roomIds.Count} 个房间ID: {string.Join(", ", roomIds)}");
+
+                // 检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    LogManager.Warning("操作已取消，流程终止");
+                    return;
+                }
+
+                var waitResult = await WaitForStartTimeAsync();
+                if (!waitResult)
+                {
+                    LogManager.Warning("等待开始时间被取消，流程终止");
+                    return;
+                }
+
+                // 再次检查是否已被取消
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    LogManager.Warning("操作已取消，流程终止");
+                    return;
+                }
+
+                LogManager.Success("发包选房开始！使用手动输入的房间ID");
+
+                // 尝试所有手动输入的房间ID
+                var anySuccess = false;
+                for (int i = 0; i < roomIds.Count; i++)
+                {
+                    var roomId = roomIds[i];
+                    
+                    if (_cancellationToken.IsCancellationRequested)
+                    {
+                        LogManager.Warning("操作已取消，流程终止");
+                        return;
+                    }
+
+                    LogManager.Info($"正在尝试房间ID [{i + 1}/{roomIds.Count}]: {roomId}");
+                    var success = await TrySelectRoomAsync(client, applierId, roomId);
+                    if (success)
+                    {
+                        LogManager.Success($"房间ID {roomId} 发包选房成功！");
+                        anySuccess = true;
+                        break;
+                    }
+                    
+                    LogManager.Warning($"房间ID {roomId} 发包未成功，继续下一个");
+                }
+
+                if (!anySuccess)
+                {
+                    LogManager.Info("所有手动输入的房间ID均未选中，流程结束");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                LogManager.Warning("操作已取消，流程终止");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Error($"运行手动房间ID选房流程时发生错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 解析手动输入的房间ID字符串
+        /// </summary>
+        /// <param name="manualRoomIds">输入的房间ID字符串</param>
+        /// <returns>解析后的房间ID列表</returns>
+        private List<string> ParseManualRoomIds(string manualRoomIds)
+        {
+            var roomIds = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(manualRoomIds))
+            {
+                return roomIds;
+            }
+
+            // 支持换行符和逗号分隔
+            var separators = new[] { '\n', '\r', ',' };
+            var parts = manualRoomIds.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var part in parts)
+            {
+                var trimmed = part.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                {
+                    roomIds.Add(trimmed);
+                }
+            }
+
+            return roomIds;
         }
 
         private async Task<bool> TrySelectRoomAsync(HttpClient client, string applyerId, string roomId)

@@ -69,6 +69,7 @@ namespace AvaRoomAssign.Models
                 catch (Exception ex)
                 {
                     // 如果直接调用失败，尝试使用Dispatcher
+                    System.Diagnostics.Debug.WriteLine($"直接调用日志失败: {ex.Message}");
                     try
                     {
                         if (Dispatcher.UIThread.CheckAccess())

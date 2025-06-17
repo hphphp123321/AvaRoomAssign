@@ -6,18 +6,20 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <Version>2.0.0</Version>
+        <Version>2.1.0</Version>
         <PackageId>AvaRoomAssign</PackageId>
         <Authors>Hp</Authors>
         <Description>基于Avalonia的自动化抢租房软件</Description>
         <ApplicationIcon>Assets\house.ico</ApplicationIcon>
-        <!-- AOT 优化配置 -->
-        <TrimMode>link</TrimMode>
-        <TrimmerDefaultAction>link</TrimmerDefaultAction>
-        <!-- 禁用一些可能有问题的优化 -->
-        <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
-        <!-- 保留必要的类型信息 -->
-        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <!-- AOT 优化配置 - 激进修剪以减小体积 -->
+        <TrimMode>full</TrimMode>
+        <PublishTrimmed>true</PublishTrimmed>
+        <!-- 抑制不重要的修剪警告 -->
+        <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+        <!-- 启用修剪分析器但不强制 -->
+        <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+        <!-- 移除不使用的程序集 -->
+        <TrimUnusedDependencies>true</TrimUnusedDependencies>
     </PropertyGroup>
 
     <ItemGroup>
@@ -47,11 +49,10 @@
 
     <!-- AOT 保留类型配置 -->
     <ItemGroup>
-        <TrimmerRootAssembly Include="AvaRoomAssign" />
         <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" Condition="Exists('ILLink.Descriptors.xml')" />
     </ItemGroup>
 
-    <!-- 保留必要的程序集 -->
+    <!-- 运行时配置选项 -->
     <ItemGroup>
         <RuntimeHostConfigurationOption Include="System.Globalization.Invariant" Value="false" />
         <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="false" />
