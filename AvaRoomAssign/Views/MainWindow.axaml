@@ -23,6 +23,12 @@
         <models:IntToBoolConverter x:Key="IntToBoolConverter"/>
         <models:MultiBoolConverter x:Key="MultiBoolConverter"/>
         <models:BoolToTextConverter x:Key="BoolToTextConverter" TrueText="手动房源ID" FalseText="社区条件设置"/>
+        <models:HouseTypeConverter x:Key="HouseTypeConverter"/>
+        <models:RoomCountConverter x:Key="RoomCountConverter"/>
+        <models:ConditionCountConverter x:Key="ConditionCountConverter"/>
+        <models:FloorRangeConverter x:Key="FloorRangeConverter"/>
+        <models:UpdateTimeConverter x:Key="UpdateTimeConverter"/>
+        <models:IntGreaterThanZeroConverter x:Key="IntGreaterThanZeroConverter"/>
         
         <!-- 浅色主题资源 - 现代清新配色 -->
         <SolidColorBrush x:Key="ThemeBackground" Color="#F7F9FC"/>
@@ -212,17 +218,17 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
-        <!-- GitHub图标按钮样式 -->
-        <Style Selector="Button.github-icon">
+        <!-- 工具按钮样式 (GitHub, 配置文件夹等) -->
+        <Style Selector="Button.tool-icon">
             <Setter Property="Background" Value="{DynamicResource ThemeTextPrimary}"/>
             <Setter Property="Foreground" Value="{DynamicResource ThemeCardBackground}"/>
             <Setter Property="CornerRadius" Value="24"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="48"/>
-            <Setter Property="Height" Value="48"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Effect">
@@ -232,8 +238,34 @@
             </Setter>
         </Style>
 
-        <Style Selector="Button.github-icon:pointerover /template/ ContentPresenter">
+        <Style Selector="Button.tool-icon:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ThemeTextSecondary}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- 配置文件夹按钮特殊样式 -->
+        <Style Selector="Button.config-folder-icon">
+            <Setter Property="Background" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#40000000" OffsetX="0" OffsetY="2" BlurRadius="8"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.config-folder-icon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ThemeAccentHover}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
@@ -482,20 +514,126 @@
             <Setter Property="Background" Value="{DynamicResource ThemeTableHover}"/>
         </Style>
 
-        <!-- 复选框样式 -->
+        <!-- 复选框样式 - 使用更通用的方法 -->
         <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Name="PART_Border"
+                                    Width="20" Height="20"
+                                    Background="{DynamicResource ThemeCardBackground}"
+                                    BorderBrush="{DynamicResource ThemeAccent}"
+                                    BorderThickness="2"
+                                    CornerRadius="4">
+                                <Path Name="PART_CheckMark"
+                                      Width="12" Height="12"
+                                      Data="M 0 6 L 4 10 L 12 2"
+                                      Stroke="White"
+                                      StrokeThickness="2"
+                                      IsVisible="False"/>
+                            </Border>
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="CheckBox:checked /template/ Border#PART_Border">
+            <Setter Property="Background" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <Style Selector="CheckBox:checked /template/ Path#PART_CheckMark">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+
+        <Style Selector="CheckBox:pointerover /template/ Border#PART_Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentHover}"/>
+        </Style>
+
+        <!-- ToggleSwitch 直接描边样式 -->
+        <Style Selector="ToggleSwitch">
             <Setter Property="Foreground" Value="{DynamicResource ThemeTextPrimary}"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
-        <Style Selector="CheckBox /template/ Border#NormalRectangle">
-            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorder}"/>
-            <Setter Property="Background" Value="{DynamicResource ThemeCardBackground}"/>
+        <!-- ToggleSwitch Off状态（默认状态）的蓝色边框 -->
+        <Style Selector="ToggleSwitch:not(:checked) /template/ Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
         </Style>
 
-        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+        <!-- ToggleSwitch On状态的蓝色边框，但背景保持原色 -->
+        <Style Selector="ToggleSwitch:checked /template/ Border">
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <!-- 备用选择器 - 针对所有状态，确保背景不变蓝 -->
+        <Style Selector="ToggleSwitch /template/ Border#PART_SwitchTrack">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <Style Selector="ToggleSwitch /template/ Border#SwitchKnobBounds">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <!-- 确保checked状态下轨道背景保持灰色 -->
+        <Style Selector="ToggleSwitch:checked /template/ Border#PART_SwitchTrack">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <!-- 强制所有Border都使用蓝色边框，但背景保持灰色 -->
+        <Style Selector="ToggleSwitch /template/ Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccent}" />
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="{DynamicResource ThemeBorder}"/>
+        </Style>
+
+        <!-- 悬停时也保持蓝色 -->
+        <Style Selector="ToggleSwitch:pointerover /template/ Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentHover}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+
+        <!-- ToggleSwitch 滑块颜色设置 -->
+        <Style Selector="ToggleSwitch /template/ Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <Style Selector="ToggleSwitch /template/ Ellipse#PART_SwitchKnob">
+            <Setter Property="Fill" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <Style Selector="ToggleSwitch /template/ Border#PART_SwitchKnob">
             <Setter Property="Background" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <!-- 确保不同状态下滑块都是蓝色 -->
+        <Style Selector="ToggleSwitch:checked /template/ Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <Style Selector="ToggleSwitch:not(:checked) /template/ Ellipse">
+            <Setter Property="Fill" Value="{DynamicResource ThemeAccent}"/>
         </Style>
     </Window.Styles>
 
@@ -507,7 +645,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 顶部标题栏和主题切换 - 增加渐变背景 -->
+        <!-- 顶部标题栏和工具栏 - 增加渐变背景 -->
         <Border Grid.Row="0" 
                 BorderBrush="{DynamicResource ThemeBorder}" 
                 BorderThickness="0,0,0,1"
@@ -533,12 +671,31 @@
                     <TextBlock Classes="modern-subtitle" Text="Ver 2.1.0 - 自动化抢公租房/人才公寓，祝大家抢房顺利！"/>
                 </StackPanel>
 
-                <Button Grid.Column="1" 
-                        Classes="theme-toggle"
-                        Content="🌙"
-                        ToolTip.Tip="切换主题"
-                        Click="OnThemeToggleClick"
-                        x:Name="ThemeToggleButton"/>
+                <!-- 工具栏区域 -->
+                <StackPanel Grid.Column="1" 
+                            Orientation="Horizontal" 
+                            Spacing="12" 
+                            VerticalAlignment="Center">
+                    
+                    <!-- 配置文件夹按钮 -->
+                    <Button Classes="config-folder-icon"
+                            Content="📁"
+                            ToolTip.Tip="打开配置文件夹"
+                            Command="{Binding OpenConfigFolderCommand}"/>
+                    
+                    <!-- GitHub按钮 -->
+                    <Button Classes="tool-icon"
+                            Content="G"
+                            ToolTip.Tip="访问GitHub仓库"
+                            Command="{Binding OpenGitHubCommand}"/>
+                    
+                    <!-- 主题切换按钮 -->
+                    <Button Classes="theme-toggle"
+                            Content="🌙"
+                            ToolTip.Tip="切换主题"
+                            Click="OnThemeToggleClick"
+                            x:Name="ThemeToggleButton"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -845,7 +1002,7 @@
                                                   CanUserSortColumns="False"
                                                   GridLinesVisibility="None"
                                                   HeadersVisibility="Column"
-                                                  MinHeight="200"
+                                                  MinHeight="100"
                                                   Background="Transparent"
                                                   BorderThickness="0"
                                                   CornerRadius="12"
@@ -888,7 +1045,7 @@
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     
-                                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2,0,0">
                                         <Border Classes="info-icon"
                                                 Width="24" Height="24" 
                                                 VerticalAlignment="Center">
@@ -904,6 +1061,154 @@
                                                    FontSize="12"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- 缓存的房源映射显示区域 -->
+                                    <StackPanel Spacing="16" Margin="0,24,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <Border Classes="success-icon"
+                                                    Width="24" Height="24" 
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="💾"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Classes="modern-label" 
+                                                       Text="缓存的房源映射" 
+                                                       FontSize="16" 
+                                                       FontWeight="SemiBold"/>
+                                                                                             <TextBlock Text="{Binding RoomIdMappings.Count, Converter={StaticResource ConditionCountConverter}}"
+                                                            Foreground="{DynamicResource ThemeTextSecondary}"
+                                                            FontSize="12"
+                                                            VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                                                                    <ItemsControl ItemsSource="{Binding RoomIdMappings}" 
+                                                          IsVisible="{Binding RoomIdMappings.Count, Converter={StaticResource IntGreaterThanZeroConverter}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Classes="modern-card" 
+                                                            Background="{DynamicResource ThemeTableAlternating}"
+                                                            CornerRadius="12" 
+                                                            Padding="16" 
+                                                            Margin="0,0,0,8">
+                                                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                                            <!-- 条件信息摘要 -->
+                                                            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8">
+                                                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                    <TextBlock Text="{Binding CommunityName}" 
+                                                                               FontWeight="SemiBold" 
+                                                                               FontSize="14"
+                                                                               Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                                                                                                         <TextBlock Text="{Binding HouseType, Converter={StaticResource HouseTypeConverter}}"
+                                                                                FontSize="12"
+                                                                                Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                                                                                                                                                              <TextBlock Text="{Binding FloorRange, Converter={StaticResource FloorRangeConverter}}"
+                                                                                FontSize="12"
+                                                                                Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                </StackPanel>
+                                                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                    <TextBlock Text="{Binding LastUpdated, Converter={StaticResource UpdateTimeConverter}}"
+                                                                               FontSize="11"
+                                                                               Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+
+                                                            <!-- 房源数量和展开按钮 -->
+                                                            <StackPanel Grid.Row="0" Grid.Column="1" 
+                                                                        Orientation="Horizontal" 
+                                                                        Spacing="8" 
+                                                                        VerticalAlignment="Center">
+                                                                <Border Background="{DynamicResource ThemeAccent}" 
+                                                                        CornerRadius="12" 
+                                                                        Padding="8,4">
+                                                                    <TextBlock Text="{Binding RoomIds.Count, Converter={StaticResource RoomCountConverter}}" 
+                                                                               FontSize="11" 
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="White"/>
+                                                                </Border>
+                                                                                                                                 <ToggleButton Name="ExpandButton"
+                                                                               Background="Transparent"
+                                                                               BorderThickness="0"
+                                                                               Padding="4"
+                                                                               FontSize="10"
+                                                                               Foreground="{DynamicResource ThemeTextSecondary}"
+                                                                               IsVisible="{Binding RoomIds.Count, Converter={StaticResource IntGreaterThanZeroConverter}}">
+                                                                     <ToggleButton.Content>
+                                                                         <TextBlock Text="▶" Name="ExpandIcon"/>
+                                                                     </ToggleButton.Content>
+                                                                     <ToggleButton.Styles>
+                                                                         <Style Selector="ToggleButton:checked TextBlock">
+                                                                             <Setter Property="Text" Value="▼"/>
+                                                                         </Style>
+                                                                     </ToggleButton.Styles>
+                                                                 </ToggleButton>
+                                                            </StackPanel>
+
+                                                            <!-- 房源ID列表（可折叠） -->
+                                                            <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                                                                    IsVisible="{Binding #ExpandButton.IsChecked}"
+                                                                    Background="{DynamicResource ThemeCardBackground}"
+                                                                    CornerRadius="8"
+                                                                    Padding="12"
+                                                                    Margin="0,12,0,0">
+                                                                <ScrollViewer MaxHeight="200" 
+                                                                              VerticalScrollBarVisibility="Auto"
+                                                                              HorizontalScrollBarVisibility="Disabled">
+                                                                    <ItemsControl ItemsSource="{Binding RoomIds}">
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <UniformGrid Columns="2"/>
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Border Background="{DynamicResource ThemeTableHover}"
+                                                                                        CornerRadius="6"
+                                                                                        Padding="8,4"
+                                                                                        Margin="2">
+                                                                                    <TextBlock Text="{Binding}" 
+                                                                                               FontFamily="Consolas, monospace"
+                                                                                               FontSize="10"
+                                                                                               Foreground="{DynamicResource ThemeTextSecondary}"
+                                                                                               TextTrimming="CharacterEllipsis"
+                                                                                               ToolTip.Tip="{Binding}"/>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </ScrollViewer>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- 空状态提示 -->
+                                        <Border Classes="modern-card"
+                                                Background="{DynamicResource ThemeTableAlternating}"
+                                                CornerRadius="12"
+                                                Padding="20"
+                                                IsVisible="{Binding RoomIdMappings.Count, Converter={StaticResource BoolToInverseConverter}}">
+                                            <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                                <TextBlock Text="📭" 
+                                                           FontSize="32" 
+                                                           HorizontalAlignment="Center"
+                                                           Opacity="0.6"/>
+                                                <TextBlock Text="暂无缓存的房源映射" 
+                                                           FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ThemeTextSecondary}"
+                                                           HorizontalAlignment="Center"/>
+                                                <TextBlock Text="点击『获取房间ID』按钮来预获取房源" 
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource ThemeTextSecondary}"
+                                                           HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </StackPanel>
                                 
@@ -1242,7 +1547,7 @@
                                                   CanUserSortColumns="False"
                                                   GridLinesVisibility="None"
                                                   HeadersVisibility="Column"
-                                                  MinHeight="200"
+                                                  MinHeight="100"
                                                   Background="Transparent"
                                                   BorderThickness="0"
                                                   CornerRadius="12"
@@ -1285,7 +1590,7 @@
                                             </DataGrid.Columns>
                                         </DataGrid>
                                         
-                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2,0,0">
                                             <Border Classes="info-icon"
                                                     Width="24" Height="24" 
                                                     VerticalAlignment="Center">
@@ -1301,6 +1606,154 @@
                                                        FontSize="12"
                                                        TextWrapping="Wrap"
                                                        VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- 缓存的房源映射显示区域 -->
+                                        <StackPanel Spacing="16" Margin="0,24,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                <Border Classes="success-icon"
+                                                        Width="24" Height="24" 
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="💾"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="12"
+                                                               Foreground="White"/>
+                                                </Border>
+                                                <TextBlock Classes="modern-label" 
+                                                           Text="缓存的房源映射" 
+                                                           FontSize="16" 
+                                                           FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding RoomIdMappings.Count, Converter={StaticResource ConditionCountConverter}}"
+                                                           Foreground="{DynamicResource ThemeTextSecondary}"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+
+                                            <ItemsControl ItemsSource="{Binding RoomIdMappings}" 
+                                                          IsVisible="{Binding RoomIdMappings.Count, Converter={StaticResource IntGreaterThanZeroConverter}}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Classes="modern-card" 
+                                                                Background="{DynamicResource ThemeTableAlternating}"
+                                                                CornerRadius="12" 
+                                                                Padding="16" 
+                                                                Margin="0,0,0,8">
+                                                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                                                <!-- 条件信息摘要 -->
+                                                                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                        <TextBlock Text="{Binding CommunityName}" 
+                                                                                   FontWeight="SemiBold" 
+                                                                                   FontSize="14"
+                                                                                   Foreground="{DynamicResource ThemeTextPrimary}"/>
+                                                                                                                                                 <TextBlock Text="{Binding HouseType, Converter={StaticResource HouseTypeConverter}}"
+                                                                                    FontSize="12"
+                                                                                    Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                                                                                             <TextBlock Text="{Binding FloorRange, Converter={StaticResource FloorRangeConverter}}"
+                                                                                FontSize="12"
+                                                                                Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                    </StackPanel>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                                        <TextBlock Text="{Binding LastUpdated, Converter={StaticResource UpdateTimeConverter}}"
+                                                                                   FontSize="11"
+                                                                                   Foreground="{DynamicResource ThemeTextSecondary}"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+
+                                                                <!-- 房源数量和展开按钮 -->
+                                                                <StackPanel Grid.Row="0" Grid.Column="1" 
+                                                                            Orientation="Horizontal" 
+                                                                            Spacing="8" 
+                                                                            VerticalAlignment="Center">
+                                                                    <Border Background="{DynamicResource ThemeAccent}" 
+                                                                            CornerRadius="12" 
+                                                                            Padding="8,4">
+                                                                        <TextBlock Text="{Binding RoomIds.Count, Converter={StaticResource RoomCountConverter}}" 
+                                                                                   FontSize="11" 
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="White"/>
+                                                                    </Border>
+                                                                                                                                     <ToggleButton Name="ExpandButton"
+                                                                               Background="Transparent"
+                                                                               BorderThickness="0"
+                                                                               Padding="4"
+                                                                               FontSize="10"
+                                                                               Foreground="{DynamicResource ThemeTextSecondary}"
+                                                                               IsVisible="{Binding RoomIds.Count, Converter={StaticResource IntGreaterThanZeroConverter}}">
+                                                                     <ToggleButton.Content>
+                                                                         <TextBlock Text="▶" Name="ExpandIcon"/>
+                                                                     </ToggleButton.Content>
+                                                                     <ToggleButton.Styles>
+                                                                         <Style Selector="ToggleButton:checked TextBlock">
+                                                                             <Setter Property="Text" Value="▼"/>
+                                                                         </Style>
+                                                                     </ToggleButton.Styles>
+                                                                 </ToggleButton>
+                                                                </StackPanel>
+
+                                                                <!-- 房源ID列表（可折叠） -->
+                                                                <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                                                                        IsVisible="{Binding #ExpandButton.IsChecked}"
+                                                                        Background="{DynamicResource ThemeCardBackground}"
+                                                                        CornerRadius="8"
+                                                                        Padding="12"
+                                                                        Margin="0,12,0,0">
+                                                                    <ScrollViewer MaxHeight="200" 
+                                                                                  VerticalScrollBarVisibility="Auto"
+                                                                                  HorizontalScrollBarVisibility="Disabled">
+                                                                        <ItemsControl ItemsSource="{Binding RoomIds}">
+                                                                            <ItemsControl.ItemsPanel>
+                                                                                <ItemsPanelTemplate>
+                                                                                    <UniformGrid Columns="2"/>
+                                                                                </ItemsPanelTemplate>
+                                                                            </ItemsControl.ItemsPanel>
+                                                                            <ItemsControl.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <Border Background="{DynamicResource ThemeTableHover}"
+                                                                                            CornerRadius="6"
+                                                                                            Padding="8,4"
+                                                                                            Margin="2">
+                                                                                        <TextBlock Text="{Binding}" 
+                                                                                                   FontFamily="Consolas, monospace"
+                                                                                                   FontSize="10"
+                                                                                                   Foreground="{DynamicResource ThemeTextSecondary}"
+                                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                                   ToolTip.Tip="{Binding}"/>
+                                                                                    </Border>
+                                                                                </DataTemplate>
+                                                                            </ItemsControl.ItemTemplate>
+                                                                        </ItemsControl>
+                                                                    </ScrollViewer>
+                                                                </Border>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <!-- 空状态提示 -->
+                                            <Border Classes="modern-card"
+                                                    Background="{DynamicResource ThemeTableAlternating}"
+                                                    CornerRadius="12"
+                                                    Padding="20"
+                                                    IsVisible="{Binding RoomIdMappings.Count, Converter={StaticResource BoolToInverseConverter}}">
+                                                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                                    <TextBlock Text="📭" 
+                                                               FontSize="32" 
+                                                               HorizontalAlignment="Center"
+                                                               Opacity="0.6"/>
+                                                    <TextBlock Text="暂无缓存的房源映射" 
+                                                               FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource ThemeTextSecondary}"
+                                                               HorizontalAlignment="Center"/>
+                                                                                                     <TextBlock Text="点击『获取房间ID』按钮来预获取房源" 
+                                                            FontSize="12"
+                                                            Foreground="{DynamicResource ThemeTextSecondary}"
+                                                            HorizontalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
                                         </StackPanel>
                                     </StackPanel>
                                     
@@ -1402,12 +1855,11 @@
                     <GradientStop Color="#F8F9FA" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
-            <Grid MaxWidth="1000" HorizontalAlignment="Center">
+            <Grid MaxWidth="800" HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MaxWidth="160"/>
-                    <ColumnDefinition Width="*" MaxWidth="160"/>
-                    <ColumnDefinition Width="Auto" MaxWidth="200"/>
-                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*" MaxWidth="180"/>
+                    <ColumnDefinition Width="*" MaxWidth="180"/>
+                    <ColumnDefinition Width="Auto" MaxWidth="220"/>
                 </Grid.ColumnDefinitions>
                 
                 <Button Grid.Column="0"
@@ -1423,14 +1875,14 @@
                         Content="⏹️ 停止抢房" 
                         Command="{Binding StopProcessCommand}"
                         IsEnabled="{Binding IsRunning}"
-                        Margin="4,0,4,0"
+                        Margin="8,0,8,0"
                         FontSize="15"/>
                 
                 <Button Grid.Column="2"
                         Classes="modern-secondary" 
                         Content="🔍 获取房间ID" 
                         Command="{Binding FetchRoomIdsCommand}"
-                        Margin="8,0,16,0"
+                        Margin="8,0,0,0"
                         FontSize="15"
                         ToolTip.Tip="提前获取所有符合条件的房间ID，加速抢房">
                     <Button.IsVisible>
@@ -1443,12 +1895,6 @@
                         </MultiBinding>
                     </Button.IsEnabled>
                 </Button>
-                
-                <Button Grid.Column="3"
-                        Classes="github-icon" 
-                        Content="G" 
-                        Command="{Binding OpenGitHubCommand}"
-                        ToolTip.Tip="访问GitHub"/>
             </Grid>
         </Border>
 

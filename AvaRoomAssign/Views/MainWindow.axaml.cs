@@ -407,6 +407,9 @@ public partial class MainWindow : Window
                 viewModel.PropertyChanged -= ViewModel_PropertyChanged;
                 viewModel.LogUpdated -= ViewModel_LogUpdated;
             }
+            
+            // 清理日志管理器资源
+            LogManager.Cleanup();
         }
         catch (Exception ex)
         {

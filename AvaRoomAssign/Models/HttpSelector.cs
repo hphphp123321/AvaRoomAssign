@@ -196,6 +196,12 @@ namespace AvaRoomAssign.Models
 
         public async Task RunAsync()
         {
+            if (!ValidateCookie(_cookie))
+            {
+                LogManager.Error("cookie字符串为空，流程终止");
+                return;
+            }
+            
             try
             {
                 using var client = CreateHttpClient(_cookie);
@@ -440,7 +446,7 @@ namespace AvaRoomAssign.Models
                     ["ApplyIDs"] = applyerId,
                     ["IsApplyTalent"] = _isApplyTalent,
                     ["type"] = "1",
-                    ["SearchEntity._PageSize"] = "500",
+                    ["SearchEntity._PageSize"] = "300",
                     ["SearchEntity._PageIndex"] = "1",
                     ["SearchEntity._CommonSearchCondition"] = condition.CommunityName
                 };
@@ -780,30 +786,11 @@ namespace AvaRoomAssign.Models
         private async Task<bool> TrySelectRoomAsync(HttpClient client, string applyerId, string roomId)
         {
             const string url = "https://ent.qpgzf.cn/RoomAssign/AjaxSelectRoom";
-            var endTime = _startTime.AddSeconds(SelectionWindowSeconds);
-
-            while (DateTime.Now < endTime && !_cancellationToken.IsCancellationRequested)
+            
+            return await ExecuteWithRetryAsync(async () =>
             {
-                var success = await ExecuteWithRetryAsync(async () =>
-                {
-                    return await SelectOnceAsync(client, applyerId, roomId, url);
-                }, $"发包选房 - 房源ID:{roomId}");
-
-                if (success)
-                    return true;
-                
-                try
-                {
-                    await Task.Delay(_requestIntervalMs, _cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    LogManager.Warning("请求间隔等待被取消，流程终止");
-                    return false;
-                }
-            }
-
-            return false;
+                return await SelectOnceAsync(client, applyerId, roomId, url);
+            }, $"发包选房 - 房源ID:{roomId}");
         }
 
         private async Task<bool> SelectOnceAsync(HttpClient client, string applyerId, string roomId, string url)
@@ -813,6 +800,33 @@ namespace AvaRoomAssign.Models
             var result = await response.Content.ReadAsStringAsync(_cancellationToken);
             LogManager.Info(result);
             return result.Contains("成功");
+        }
+
+        /// <summary>
+        /// 检验cookie字符串是否有效
+        /// </summary>
+        /// <param name="cookie">cookie字符串</param>
+        /// <returns>是否有效</returns>
+        private bool ValidateCookie(string cookie)
+        {
+            if (string.IsNullOrEmpty(cookie))
+            {
+                LogManager.Error("cookie字符串为空，流程终止");
+                return false;
+            }
+            if (!cookie.Contains("SYS_USER_COOKIE_KEY="))
+            {
+                LogManager.Error("cookie字符串格式不正确，流程终止");
+                return false;
+            }
+
+            // 正确格式是类似于SYS_USER_COOKIE_KEY=D6B3E5vZth20kjGPDFKouaBnr/SSRbEk1QAtd7dGwDbSCoVjpu/o5A==
+            // 而不是SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=D6B3E5vZth20kjGPDFKouaBnr/SSRbEk1QAtd7dGwDbSCoVjpu/o5A==
+            // 如果检测到这种格式，则自动删除多余的SYS_USER_COOKIE_KEY=
+            if (cookie.Contains("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=")){
+                cookie = cookie.Replace("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=", "SYS_USER_COOKIE_KEY=");
+            }
+            return true;
         }
     }
 } 

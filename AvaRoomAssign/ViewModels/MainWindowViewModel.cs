@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using AvaRoomAssign.Models;
@@ -18,61 +19,47 @@ namespace AvaRoomAssign.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    private string _logText = string.Empty;
+    [ObservableProperty] private string _logText = string.Empty;
 
-    [ObservableProperty]
-    private int _selectedOperationMode = 1; // 默认选择Http发包
+    [ObservableProperty] private int _selectedOperationMode = 1; // 默认选择Http发包
 
-    [ObservableProperty]
-    private int _selectedBrowserType = 1; // 默认选择Edge
+    [ObservableProperty] private int _selectedBrowserType = 1; // 默认选择Edge
 
-    [ObservableProperty]
-    private string _userAccount = "91310118832628001D";
+    [ObservableProperty] private string _userAccount = "91310118832628001D";
 
-    [ObservableProperty]
-    private string _userPassword = string.Empty;
+    [ObservableProperty] private string _userPassword = string.Empty;
 
     [ObservableProperty]
     private string _cookie = "SYS_USER_COOKIE_KEY=DuAZwOAf/NLjgFDzEGln40YCqW1fow8gYHTd64HiogeCyqK3B2HgXg==";
 
-    [ObservableProperty]
-    private string _applierName = "高少炜";
+    [ObservableProperty] private string _applierName = "高少炜";
 
-    [ObservableProperty]
-    private DateTime _startDate = DateTime.Today.AddDays(1);
+    [ObservableProperty] private DateTime _startDate = DateTime.Today.AddDays(1);
 
-    [ObservableProperty]
-    private string _startHour = "09";
+    [ObservableProperty] private string _startHour = "09";
 
-    [ObservableProperty]
-    private string _startMinute = "00";
+    [ObservableProperty] private string _startMinute = "00";
 
-    [ObservableProperty]
-    private string _startSecond = "00";
+    [ObservableProperty] private string _startSecond = "00";
 
-    [ObservableProperty]
-    private string _clickInterval = "200";
+    [ObservableProperty] private string _clickInterval = "200";
 
-    [ObservableProperty]
-    private bool _autoConfirm = false;
+    [ObservableProperty] private bool _autoConfirm = false;
 
-    [ObservableProperty]
-    private bool _isRunning = false;
+    [ObservableProperty] private bool _isRunning = false;
 
-    [ObservableProperty]
-    private bool _isFetchingRoomIds = false;
+    [ObservableProperty] private bool _isFetchingRoomIds = false;
 
-    [ObservableProperty]
-    private ObservableCollection<HouseCondition> _communityConditions = new();
+    [ObservableProperty] private ObservableCollection<HouseCondition> _communityConditions = new();
 
     // 添加手动房间ID列表属性
-    [ObservableProperty]
-    private string _manualRoomIds = string.Empty;
+    [ObservableProperty] private string _manualRoomIds = string.Empty;
 
     // 添加用于切换社区条件设置和手动房间ID的属性
-    [ObservableProperty]
-    private bool _useManualRoomIds = false;
+    [ObservableProperty] private bool _useManualRoomIds = false;
+
+    // 添加房源映射缓存数据绑定属性
+    [ObservableProperty] private ObservableCollection<ConditionRoomIdMapping> _roomIdMappings = new();
 
     public List<string> OperationModes { get; } = new() { "模拟点击", "Http发包" };
     public List<string> BrowserTypes { get; } = new() { "Chrome", "Edge" };
@@ -82,7 +69,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private ISelector? _currentSelector;
     private bool _isLoadingConfig = false; // 防止加载配置时触发保存
     private Dictionary<string, List<string>> _preFetchedRoomIds = new(); // 预获取的房间ID
-    
+
     /// <summary>
     /// 日志更新事件，用于通知UI自动滚动到底部
     /// </summary>
@@ -109,10 +96,10 @@ public partial class MainWindowViewModel : ViewModelBase
                         LogManager.Error($"初始化日志系统时出错: {ex.Message}");
                     }
                 });
-                
+
                 // 然后加载配置
                 await LoadConfigurationAsync();
-                
+
                 // 最后输出配置加载完成的消息
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -136,7 +123,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _isLoadingConfig = true;
             var config = await ConfigManager.LoadConfigAsync();
-            
+
             // 在UI线程中更新属性
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
@@ -152,27 +139,27 @@ public partial class MainWindowViewModel : ViewModelBase
                 StartSecond = config.StartSecond;
                 ClickInterval = config.ClickInterval;
                 AutoConfirm = config.AutoConfirm;
-                
+
                 // 添加加载手动房间ID
                 ManualRoomIds = config.ManualRoomIds;
-                
+
                 // 添加加载使用手动房间ID的开关状态
                 UseManualRoomIds = config.UseManualRoomIds;
-                
+
                 // 更新社区条件
                 CommunityConditions.Clear();
                 foreach (var conditionData in config.CommunityConditions)
                 {
                     CommunityConditions.Add(conditionData.ToHouseCondition());
                 }
-                
+
                 // 如果没有社区条件，添加默认条件
                 if (CommunityConditions.Count == 0)
                 {
                     var defaultCondition = new HouseCondition("正荣景苑", 0, "3-4,6", 0, 0, HouseType.OneRoom);
                     CommunityConditions.Add(defaultCondition);
                 }
-                
+
                 // 加载房间ID映射
                 await LoadRoomIdMappingsAsync(config);
             });
@@ -184,7 +171,7 @@ public partial class MainWindowViewModel : ViewModelBase
         finally
         {
             _isLoadingConfig = false;
-            
+
             // 加载完成后开始监听属性变化
             StartPropertyChangeMonitoring();
         }
@@ -196,9 +183,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task SaveConfigurationAsync()
     {
         if (_isLoadingConfig) return; // 加载配置时不保存
-        
+
         try
         {
+            // 先加载现有配置以保留房间ID映射
+            var existingConfig = await ConfigManager.LoadConfigAsync();
+            
             var config = new AppConfig
             {
                 SelectedOperationMode = SelectedOperationMode,
@@ -214,9 +204,11 @@ public partial class MainWindowViewModel : ViewModelBase
                 AutoConfirm = AutoConfirm,
                 CommunityConditions = CommunityConditions.Select(HouseConditionData.FromHouseCondition).ToList(),
                 ManualRoomIds = ManualRoomIds,
-                UseManualRoomIds = UseManualRoomIds
+                UseManualRoomIds = UseManualRoomIds,
+                // 保留现有的房间ID映射，避免被覆盖
+                RoomIdMappings = existingConfig.RoomIdMappings
             };
-            
+
             // 使用异步保存，避免阻塞UI
             await Task.Run(() => ConfigManager.SaveConfig(config));
         }
@@ -235,14 +227,14 @@ public partial class MainWindowViewModel : ViewModelBase
         PropertyChanged += async (sender, e) =>
         {
             if (_isLoadingConfig) return;
-            
+
             // 排除不需要保存的属性
-            var excludeProperties = new[] { nameof(LogText), nameof(IsRunning) };
+            var excludeProperties = new[] { nameof(LogText), nameof(IsRunning), nameof(IsFetchingRoomIds), nameof(RoomIdMappings) };
             if (excludeProperties.Contains(e.PropertyName)) return;
-            
+
             await SaveConfigurationAsync();
         };
-        
+
         // 监听集合变化
         CommunityConditions.CollectionChanged += async (sender, e) =>
         {
@@ -325,7 +317,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         case OperationMode.Click:
                             LogManager.Info("正在启动浏览器...");
                             var driver = GetDriver(driverType);
-                            
+
                             _currentSelector = new DriverSelector(
                                 driver: driver,
                                 userAccount: UserAccount,
@@ -347,9 +339,9 @@ public partial class MainWindowViewModel : ViewModelBase
                                 cookie: Cookie,
                                 requestIntervalMs: clickInterval,
                                 cancellationToken: _cancellationTokenSource.Token);
-                            
+
                             _currentSelector = httpSelector;
-                            
+
                             // 检查是否启用了手动输入房间ID模式且有手动输入的房间ID
                             if (UseManualRoomIds && !string.IsNullOrWhiteSpace(ManualRoomIds))
                             {
@@ -357,13 +349,14 @@ public partial class MainWindowViewModel : ViewModelBase
                                 await httpSelector.RunWithManualRoomIdsAsync(ManualRoomIds);
                                 return; // 使用手动房间ID，直接返回
                             }
-                            
+
                             // 检查是否有预获取的房间ID
                             if (_preFetchedRoomIds.Count > 0)
                             {
                                 await httpSelector.RunWithPreFetchedRoomIdsAsync(_preFetchedRoomIds);
                                 return; // 使用预获取的房间ID，直接返回
                             }
+
                             break;
 
                         default:
@@ -427,6 +420,45 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// 打开配置文件所在文件夹
+    /// </summary>
+    [RelayCommand]
+    private void OpenConfigFolder()
+    {
+        try
+        {
+            var configPath = ConfigManager.GetConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            
+            if (string.IsNullOrEmpty(configDir))
+            {
+                LogManager.Error("无法获取配置文件路径");
+                return;
+            }
+
+            // 确保目录存在
+            if (!Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+                LogManager.Info($"已创建配置文件目录: {configDir}");
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = configDir,
+                UseShellExecute = true,
+                Verb = "open"
+            };
+            Process.Start(psi);
+            LogManager.Success($"已打开配置文件夹: {configDir}");
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error("打开配置文件夹失败", ex);
+        }
+    }
+
+    /// <summary>
     /// 重置配置到默认值
     /// </summary>
     [RelayCommand]
@@ -435,13 +467,13 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             _isLoadingConfig = true;
-            
+
             // 删除配置文件
             ConfigManager.DeleteConfig();
-            
+
             // 重新加载默认配置
             await LoadConfigurationAsync();
-            
+
             LogManager.Success("配置已重置为默认值");
         }
         catch (Exception ex)
@@ -507,68 +539,61 @@ public partial class MainWindowViewModel : ViewModelBase
             var cancellationTokenSource = new CancellationTokenSource();
             var communityList = new List<HouseCondition>(CommunityConditions);
 
-            await Task.Run(async () =>
+
+            try
             {
-                try
+                // 创建HttpSelector用于预获取房间ID
+                var httpSelector = new HttpSelector(
+                    applierName: ApplierName,
+                    communityList: communityList,
+                    startTime: DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    cookie: Cookie,
+                    requestIntervalMs: 1000,
+                    cancellationToken: cancellationTokenSource.Token);
+
+                // 执行预获取
+                var roomIdMappings = await httpSelector.PreFetchRoomIdsAsync(communityList);
+
+                // 保存到配置文件
+                await SaveRoomIdMappingsAsync(roomIdMappings, communityList);
+
+                // 缓存到内存
+                _preFetchedRoomIds = roomIdMappings;
+
+                var totalRoomIds = roomIdMappings.Values.Sum(list => list.Count);
+
+
+                foreach (var (key, roomIds) in roomIdMappings)
                 {
-                    // 创建HttpSelector用于预获取房间ID
-                    var httpSelector = new HttpSelector(
-                        applierName: ApplierName,
-                        communityList: communityList,
-                        startTime: DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                        cookie: Cookie,
-                        requestIntervalMs: 1000,
-                        cancellationToken: cancellationTokenSource.Token);
-
-                    // 执行预获取
-                    var roomIdMappings = await httpSelector.PreFetchRoomIdsAsync(communityList);
-                    
-                    // 保存到配置文件
-                    await SaveRoomIdMappingsAsync(roomIdMappings, communityList);
-
-                    // 缓存到内存
-                    _preFetchedRoomIds = roomIdMappings;
-
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    var condition = communityList.FirstOrDefault(c =>
+                        ConditionRoomIdMapping.GenerateConditionKey(c) == key);
+                    if (condition != null)
                     {
-                        var totalRoomIds = roomIdMappings.Values.Sum(list => list.Count);
-                        
-                    
-                        foreach (var (key, roomIds) in roomIdMappings)
-                        {
-                            var condition = communityList.FirstOrDefault(c => 
-                                ConditionRoomIdMapping.GenerateConditionKey(c) == key);
-                            if (condition != null)
-                            {
-                                LogManager.Info($"  {condition.CommunityName}: {roomIds.Count} 个房间");
-                            }
-                        }
-
-                        if (totalRoomIds > 0)
-                        {
-                            LogManager.Success($"房间ID获取完成！共获取到 {totalRoomIds} 个房间ID，并已保存到配置文件");
-                            LogManager.Info($"配置文件路径: {ConfigManager.GetConfigPath()}");
-                            LogManager.Success($"下次抢房时会自动使用这些房间ID加速抢房，无需再次获取了");
-                        }
-                        else
-                        {
-                            LogManager.Warning("未获取到任何房间ID，请检查配置是否正确或者是否在抢房时间范围内");
-                        }
-                    });
+                        LogManager.Info($"  {condition.CommunityName}: {roomIds.Count} 个房间");
+                    }
                 }
-                catch (Exception ex)
+
+                if (totalRoomIds > 0)
                 {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        LogManager.Error("获取房间ID时出错", ex);
-                    });
+                    LogManager.Success($"房间ID获取完成！共获取到 {totalRoomIds} 个房间ID，并已保存到配置文件");
+                    LogManager.Info($"配置文件路径: {ConfigManager.GetConfigPath()}");
+                    LogManager.Success($"下次抢房时会自动使用这些房间ID加速抢房，无需再次获取了");
                 }
-            }, cancellationTokenSource.Token);
+                else
+                {
+                    LogManager.Warning("未获取到任何房间ID，请检查配置是否正确或者是否在抢房时间范围内");
+                }
+            }
+            catch (Exception ex)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => { LogManager.Error("获取房间ID时出错", ex); });
+            }
         }
         catch (Exception ex)
         {
             LogManager.Error("启动获取房间ID过程中出现错误", ex);
         }
+
         finally
         {
             IsFetchingRoomIds = false;
@@ -578,29 +603,42 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// 保存房间ID映射到配置文件
     /// </summary>
-    private async Task SaveRoomIdMappingsAsync(Dictionary<string, List<string>> roomIdMappings, List<HouseCondition> conditions)
+    private async Task SaveRoomIdMappingsAsync(Dictionary<string, List<string>> roomIdMappings,
+        List<HouseCondition> conditions)
     {
         try
         {
             var config = await ConfigManager.LoadConfigAsync();
-            
+
             // 清空现有映射
             config.RoomIdMappings.Clear();
-            
+
+            // 在UI线程上清空ObservableCollection
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                RoomIdMappings.Clear();
+            });
+
             // 添加新的映射
             foreach (var condition in conditions)
             {
                 var conditionKey = ConditionRoomIdMapping.GenerateConditionKey(condition);
                 var mapping = ConditionRoomIdMapping.FromHouseCondition(condition);
-                
+
                 if (roomIdMappings.TryGetValue(conditionKey, out var roomIds))
                 {
                     mapping.RoomIds = roomIds;
                 }
-                
+
                 config.RoomIdMappings.Add(mapping);
+
+                // 在UI线程上添加到ObservableCollection
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    RoomIdMappings.Add(mapping);
+                });
             }
-            
+
             await ConfigManager.SaveConfigAsync(config);
         }
         catch (Exception ex)
@@ -619,15 +657,27 @@ public partial class MainWindowViewModel : ViewModelBase
             // 如果没有传入配置，则加载配置；否则使用传入的配置
             config ??= await ConfigManager.LoadConfigAsync();
             _preFetchedRoomIds.Clear();
-            
+
+            // 在UI线程上更新ObservableCollection
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                RoomIdMappings.Clear();
+            });
+
             foreach (var mapping in config.RoomIdMappings)
             {
                 if (mapping.RoomIds.Count > 0)
                 {
                     _preFetchedRoomIds[mapping.ConditionKey] = mapping.RoomIds;
                 }
+
+                // 在UI线程上添加到ObservableCollection，显示所有映射条件（包括没有房源ID的）
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    RoomIdMappings.Add(mapping);
+                });
             }
-            
+
             if (_preFetchedRoomIds.Count > 0)
             {
                 var totalRoomIds = _preFetchedRoomIds.Values.Sum(list => list.Count);
@@ -656,7 +706,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             LogText += text;
             OnPropertyChanged(nameof(LogText));
-            
+
             // 触发日志更新事件，通知UI滚动到底部
             LogUpdated?.Invoke(this, EventArgs.Empty);
         });
