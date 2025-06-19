@@ -691,10 +691,10 @@
                     
                     <!-- 主题切换按钮 -->
                     <Button Classes="theme-toggle"
-                            Content="🌙"
-                            ToolTip.Tip="切换主题"
-                            Click="OnThemeToggleClick"
-                            x:Name="ThemeToggleButton"/>
+                        Content="🌙"
+                        ToolTip.Tip="切换主题"
+                        Click="OnThemeToggleClick"
+                        x:Name="ThemeToggleButton"/>
                 </StackPanel>
             </Grid>
         </Border>

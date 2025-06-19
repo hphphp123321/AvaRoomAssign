@@ -48,7 +48,8 @@ public partial class MainWindow : Window
         ApplyScreenBasedSizing();
         
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
+        
+        // DataContext 已在 App.axaml.cs 中设置，这里不需要重复创建
         
         // 设置窗口初始大小
         SetInitialWindowSize();

@@ -86,7 +86,7 @@ public class BoolToTextConverter : IValueConverter
     {
         throw new NotImplementedException();
     }
-}
+} 
 
 /// <summary>
 /// 房型数字转换为中文描述的转换器

@@ -45,6 +45,11 @@
         <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="135.0.7049.9500" />
         <PackageReference Include="Selenium.WebDriver.MSEdgeDriver" Version="135.0.3179.73" />
         <PackageReference Include="SeleniumExtras.WaitHelpers" Version="1.0.2" />
+        <!-- Serilog 日志框架 -->
+        <PackageReference Include="Serilog" Version="4.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="5.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     </ItemGroup>
 
     <!-- AOT 保留类型配置 -->
