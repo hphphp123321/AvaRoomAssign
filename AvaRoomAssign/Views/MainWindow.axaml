@@ -29,6 +29,7 @@
         <models:FloorRangeConverter x:Key="FloorRangeConverter"/>
         <models:UpdateTimeConverter x:Key="UpdateTimeConverter"/>
         <models:IntGreaterThanZeroConverter x:Key="IntGreaterThanZeroConverter"/>
+        <models:BoolToTextConverter x:Key="FetchingCookieTextConverter" TrueText="🔄 获取中..." FalseText="🔑 自动获取"/>
         
         <!-- 浅色主题资源 - 现代清新配色 -->
         <SolidColorBrush x:Key="ThemeBackground" Color="#F7F9FC"/>
@@ -822,30 +823,47 @@
                                              Margin="0,0,24,16"
                                              HorizontalAlignment="Stretch"/>
 
-                                    <!-- Cookie -->
-                                    <TextBlock Grid.Row="2" Grid.Column="0" 
-                                               Classes="modern-label"
-                                               Text="Cookie"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,24,0"/>
-                                    <TextBox Grid.Row="2" Grid.Column="1" 
-                                             Text="{Binding Cookie}"
-                                             IsEnabled="{Binding !IsRunning}"
-                                             Watermark="请输入Cookie(Http发包模式必填)"
-                                             Margin="0,0,24,16"
-                                             HorizontalAlignment="Stretch"/>
-                                    <Border Grid.Row="2" Grid.Column="2" 
-                                            Classes="warning-icon"
-                                            Width="36" Height="36" 
-                                            VerticalAlignment="Center"
-                                            ToolTip.Tip="如果填写了cookie不用填账号密码，获取方式：登陆一次后在浏览器设置里cookie查找ent.qpgzf.cn的cookie">
-                                        <TextBlock Text="?"
-                                                   HorizontalAlignment="Center"
+                                                                            <!-- Cookie -->
+                                        <TextBlock Grid.Row="2" Grid.Column="0" 
+                                                   Classes="modern-label"
+                                                   Text="Cookie"
                                                    VerticalAlignment="Center"
-                                                   FontWeight="Bold"
-                                                   FontSize="18"
-                                                   Foreground="White"/>
-                                    </Border>
+                                                   Margin="0,0,24,0"/>
+                                        <Grid Grid.Row="2" Grid.Column="1" 
+                                              ColumnDefinitions="*,Auto"
+                                              Margin="0,0,24,16">
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Cookie}"
+                                                     IsEnabled="{Binding !IsRunning}"
+                                                     Watermark="请输入Cookie(Http发包模式必填)"
+                                                     Margin="0,0,8,0"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="modern-secondary" 
+                                                    Content="{Binding IsFetchingCookie, Converter={StaticResource FetchingCookieTextConverter}}" 
+                                                    Command="{Binding FetchCookieCommand}"
+                                                    FontSize="12"
+                                                    Padding="8,6"
+                                                    ToolTip.Tip="通过用户名和密码自动获取Cookie">
+                                                <Button.IsEnabled>
+                                                    <MultiBinding Converter="{StaticResource MultiBoolConverter}">
+                                                        <Binding Path="!IsRunning"/>
+                                                        <Binding Path="!IsFetchingCookie"/>
+                                                    </MultiBinding>
+                                                </Button.IsEnabled>
+                                            </Button>
+                                        </Grid>
+                                        <Border Grid.Row="2" Grid.Column="2" 
+                                                Classes="warning-icon"
+                                                Width="36" Height="36" 
+                                                VerticalAlignment="Center"
+                                                ToolTip.Tip="填写了cookie后就不用填账号密码了。点击『自动获取』按钮可以通过账号密码自动获取Cookie">
+                                            <TextBlock Text="?"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       FontSize="18"
+                                                       Foreground="White"/>
+                                        </Border>
 
                                     <!-- 申请人姓名 -->
                                     <TextBlock Grid.Row="3" Grid.Column="0" 
@@ -1377,16 +1395,34 @@
                                                    Text="Cookie"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,24,0"/>
-                                        <TextBox Grid.Row="2" Grid.Column="1" 
-                                                 Text="{Binding Cookie}"
-                                                 IsEnabled="{Binding !IsRunning}"
-                                                 Watermark="请输入Cookie(Http发包模式必填)"
-                                                 Margin="0,0,24,16"/>
+                                        <Grid Grid.Row="2" Grid.Column="1" 
+                                              ColumnDefinitions="200,Auto"
+                                              Margin="0,0,24,16">
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Cookie}"
+                                                     IsEnabled="{Binding !IsRunning}"
+                                                     Watermark="请输入Cookie(Http发包模式必填)"
+                                                     Margin="0,0,8,0"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="modern-secondary" 
+                                                    Content="{Binding IsFetchingCookie, Converter={StaticResource FetchingCookieTextConverter}}" 
+                                                    Command="{Binding FetchCookieCommand}"
+                                                    FontSize="12"
+                                                    Padding="6,4"
+                                                    ToolTip.Tip="通过用户名和密码自动获取Cookie">
+                                                <Button.IsEnabled>
+                                                    <MultiBinding Converter="{StaticResource MultiBoolConverter}">
+                                                        <Binding Path="!IsRunning"/>
+                                                        <Binding Path="!IsFetchingCookie"/>
+                                                    </MultiBinding>
+                                                </Button.IsEnabled>
+                                            </Button>
+                                        </Grid>
                                         <Border Grid.Row="2" Grid.Column="2" 
                                                 Classes="warning-icon"
                                                 Width="36" Height="36" 
                                                 VerticalAlignment="Center"
-                                                ToolTip.Tip="如果填写了cookie不用填账号密码，获取方式：登陆一次后在浏览器设置里cookie查找ent.qpgzf.cn的cookie">
+                                                ToolTip.Tip="填写了cookie后就不用填账号密码了。点击『自动获取』按钮可以通过账号密码自动获取Cookie">
                                             <TextBlock Text="?"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"

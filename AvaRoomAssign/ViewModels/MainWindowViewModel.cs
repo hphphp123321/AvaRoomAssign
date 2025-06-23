@@ -50,6 +50,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isFetchingRoomIds = false;
 
+    [ObservableProperty] private bool _isFetchingCookie = false;
+
     [ObservableProperty] private ObservableCollection<HouseCondition> _communityConditions = new();
 
     // 添加手动房间ID列表属性
@@ -229,7 +231,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (_isLoadingConfig) return;
 
             // 排除不需要保存的属性
-            var excludeProperties = new[] { nameof(LogText), nameof(IsRunning), nameof(IsFetchingRoomIds), nameof(RoomIdMappings) };
+            var excludeProperties = new[] { nameof(LogText), nameof(IsRunning), nameof(IsFetchingRoomIds), nameof(IsFetchingCookie), nameof(RoomIdMappings) };
             if (excludeProperties.Contains(e.PropertyName)) return;
 
             await SaveConfigurationAsync();
@@ -496,6 +498,99 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             LogManager.Error("手动保存配置失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 自动获取Cookie命令
+    /// </summary>
+    [RelayCommand]
+    private async Task FetchCookieAsync()
+    {
+        if (IsFetchingCookie || IsRunning) return;
+
+        IsFetchingCookie = true;
+
+        try
+        {
+            // 检查必要参数
+            if (string.IsNullOrWhiteSpace(UserAccount))
+            {
+                LogManager.Error("用户账号不能为空，请先填写用户账号");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(UserPassword))
+            {
+                LogManager.Error("用户密码不能为空，请先填写用户密码");
+                return;
+            }
+
+            LogManager.Info("开始自动获取Cookie...");
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            
+            try
+            {
+                // 启动浏览器用于获取Cookie
+                LogManager.Info("正在启动浏览器...");
+                var driverType = SelectedBrowserType == 0 ? DriverType.Chrome : DriverType.Edge;
+                var driver = GetDriver(driverType);
+                
+                try
+                {
+                    // 调用CookieManager获取Cookie
+                    var cookieValue = await CookieManager.GetCookieWithSeleniumAsync(driver, UserAccount, UserPassword, cancellationTokenSource.Token);
+
+                    if (!string.IsNullOrWhiteSpace(cookieValue))
+                    {
+                        // 更新Cookie字段
+                        Cookie = cookieValue;
+                        LogManager.Success("Cookie获取成功并已自动填入！现在可以使用HTTP发包模式进行抢房了");
+                        
+                        // 验证Cookie是否有效
+                        LogManager.Info("正在验证Cookie有效性...");
+                        var isValid = await CookieManager.ValidateCookieWithSeleniumAsync(driver, cookieValue, cancellationTokenSource.Token);
+                        if (isValid)
+                        {
+                            LogManager.Success("Cookie验证通过，可以正常使用");
+                        }
+                        else
+                        {
+                            LogManager.Warning("Cookie验证失败，可能需要重新获取");
+                        }
+                    }
+                    else
+                    {
+                        LogManager.Error("获取Cookie失败，请检查用户名和密码是否正确");
+                    }
+                }
+                finally
+                {
+                    // 关闭浏览器
+                    try
+                    {
+                        driver.Quit();
+                        LogManager.Info("浏览器已关闭");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Warning($"关闭浏览器时出现警告: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Error("获取Cookie时出错", ex);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error("启动获取Cookie过程中出现错误", ex);
+        }
+        finally
+        {
+            IsFetchingCookie = false;
         }
     }
 

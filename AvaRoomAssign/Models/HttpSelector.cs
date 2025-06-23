@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -294,7 +295,31 @@ namespace AvaRoomAssign.Models
         private HttpClient CreateHttpClient(string cookie)
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={cookie}");
+            
+            // 确保Cookie格式正确
+            var formattedCookie = cookie;
+            if (formattedCookie.StartsWith("SYS_USER_COOKIE_KEY="))
+            {
+                // 如果已经包含前缀，直接使用
+                client.DefaultRequestHeaders.Add("Cookie", formattedCookie);
+            }
+            else
+            {
+                // 如果只是值部分，添加前缀
+                client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={formattedCookie}");
+            }
+            
+            // 处理重复前缀的情况
+            var cookieHeaders = client.DefaultRequestHeaders.GetValues("Cookie");
+            var cookieHeader = cookieHeaders.FirstOrDefault() ?? "";
+            if (cookieHeader.Contains("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY="))
+            {
+                client.DefaultRequestHeaders.Remove("Cookie");
+                var correctedCookie = cookieHeader.Replace("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=", "SYS_USER_COOKIE_KEY=");
+                client.DefaultRequestHeaders.Add("Cookie", correctedCookie);
+                LogManager.Info("已自动修正重复的Cookie前缀");
+            }
+            
             // 设置超时时间，避免长时间等待
             client.Timeout = TimeSpan.FromSeconds(30);
             return client;
@@ -304,7 +329,19 @@ namespace AvaRoomAssign.Models
         {
             return await ExecuteWithRetryAsync(async () =>
             {
-                var html = await client.GetStringAsync("https://ent.qpgzf.cn/RoomAssign/Index", _cancellationToken);
+                var response = await client.GetAsync("https://ent.qpgzf.cn/RoomAssign/Index", _cancellationToken);
+                var html = await response.Content.ReadAsStringAsync(_cancellationToken);
+                
+                // 检查是否被重定向到登录页面
+                var finalUrl = response.RequestMessage?.RequestUri?.ToString() ?? "";
+                if (finalUrl.Contains("/sysloginmanage/CompanyIndex") || 
+                    finalUrl.Contains("CompanyIndex") || 
+                    response.Headers.Location?.ToString().Contains("CompanyIndex") == true)
+                {
+                    LogManager.Error("Cookie无效，访问房源分配页面被重定向到登录页");
+                    return null;
+                }
+
                 var doc = new HtmlDocument();
                 doc.LoadHtml(html);
                 // 查找 input[name=applierName] 元素
@@ -314,6 +351,13 @@ namespace AvaRoomAssign.Models
                     _isApplyTalent = node?.Attributes["isapplytalent"]?.Value ?? "1";
                     LogManager.Success($"成功获取申请人{_applierName}的ID: {id}，类型为{(_isApplyTalent == "1" ? "人才公寓" : "公租房")}");
                     return id;
+                }
+
+                // 检查页面内容是否包含登录相关信息
+                if (html.Contains("用户登录") || html.Contains("login") || html.Contains("请登录"))
+                {
+                    LogManager.Error("Cookie无效，页面包含登录相关内容");
+                    return null;
                 }
 
                 LogManager.Warning($"未找到申请人 {_applierName} 对应的 ID");
@@ -814,17 +858,30 @@ namespace AvaRoomAssign.Models
                 LogManager.Error("cookie字符串为空，流程终止");
                 return false;
             }
+
+            // 格式化Cookie值，确保格式正确
+            // 如果不包含"SYS_USER_COOKIE_KEY="前缀，添加它
             if (!cookie.Contains("SYS_USER_COOKIE_KEY="))
             {
-                LogManager.Error("cookie字符串格式不正确，流程终止");
-                return false;
+                // 如果cookie只是值部分，添加前缀
+                if (!string.IsNullOrWhiteSpace(cookie))
+                {
+                    LogManager.Info("Cookie格式化：添加SYS_USER_COOKIE_KEY前缀");
+                    return true; // 在CreateHttpClient中会正确格式化
+                }
+                else
+                {
+                    LogManager.Error("cookie字符串格式不正确，流程终止");
+                    return false;
+                }
             }
 
             // 正确格式是类似于SYS_USER_COOKIE_KEY=D6B3E5vZth20kjGPDFKouaBnr/SSRbEk1QAtd7dGwDbSCoVjpu/o5A==
             // 而不是SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=D6B3E5vZth20kjGPDFKouaBnr/SSRbEk1QAtd7dGwDbSCoVjpu/o5A==
             // 如果检测到这种格式，则自动删除多余的SYS_USER_COOKIE_KEY=
-            if (cookie.Contains("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=")){
-                cookie = cookie.Replace("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=", "SYS_USER_COOKIE_KEY=");
+            if (cookie.Contains("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY="))
+            {
+                LogManager.Warning("检测到重复的Cookie前缀，自动修正");
             }
             return true;
         }
