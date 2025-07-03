@@ -380,7 +380,7 @@ public partial class MainWindow : Window
             _ => "未知"
         };
         
-        this.Title = $"抢房好好好 - Avalonia版 Ver 2.1.0 By: hp [{screenTypeText}:{_screenConfig.Width}x{_screenConfig.Height}]";
+        this.Title = $"抢房好好好 - Avalonia版 Ver 2.2.0 By: hp [{screenTypeText}:{_screenConfig.Width}x{_screenConfig.Height}]";
     }
 
     /// <summary>

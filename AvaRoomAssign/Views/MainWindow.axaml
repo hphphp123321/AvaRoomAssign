@@ -8,7 +8,7 @@
         x:Class="AvaRoomAssign.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/house.ico"
-        Title="抢房好好好 - Avalonia版 Ver 2.1.0 By: hp"
+        Title="抢房好好好 - Avalonia版 Ver 2.2.0 By: hp"
         Width="800" Height="700"
         MinWidth="750" MinHeight="550"
         WindowStartupLocation="CenterScreen"
@@ -669,7 +669,7 @@
                         <TextBlock Classes="modern-title" Text="🏠" FontSize="32"/>
                         <TextBlock Classes="modern-title" Text="抢房好好好"/>
                     </StackPanel>
-                    <TextBlock Classes="modern-subtitle" Text="Ver 2.1.0 - 自动化抢公租房/人才公寓，祝大家抢房顺利！"/>
+                    <TextBlock Classes="modern-subtitle" Text="Ver 2.2.0 - 自动化抢公租房/人才公寓，祝大家抢房顺利！"/>
                 </StackPanel>
 
                 <!-- 工具栏区域 -->

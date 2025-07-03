@@ -6,7 +6,7 @@
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <Version>2.1.0</Version>
+        <Version>2.2.0</Version>
         <PackageId>AvaRoomAssign</PackageId>
         <Authors>Hp</Authors>
         <Description>基于Avalonia的自动化抢租房软件</Description>
