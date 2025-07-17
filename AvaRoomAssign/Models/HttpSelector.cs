@@ -298,26 +298,13 @@ namespace AvaRoomAssign.Models
             
             // 确保Cookie格式正确
             var formattedCookie = cookie;
-            if (formattedCookie.StartsWith("SYS_USER_COOKIE_KEY="))
+            if (!formattedCookie.StartsWith("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY="))
             {
-                // 如果已经包含前缀，直接使用
-                client.DefaultRequestHeaders.Add("Cookie", formattedCookie);
+                client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={formattedCookie}");
             }
             else
             {
-                // 如果只是值部分，添加前缀
-                client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={formattedCookie}");
-            }
-            
-            // 处理重复前缀的情况
-            var cookieHeaders = client.DefaultRequestHeaders.GetValues("Cookie");
-            var cookieHeader = cookieHeaders.FirstOrDefault() ?? "";
-            if (cookieHeader.Contains("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY="))
-            {
-                client.DefaultRequestHeaders.Remove("Cookie");
-                var correctedCookie = cookieHeader.Replace("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY=", "SYS_USER_COOKIE_KEY=");
-                client.DefaultRequestHeaders.Add("Cookie", correctedCookie);
-                LogManager.Info("已自动修正重复的Cookie前缀");
+                client.DefaultRequestHeaders.Add("Cookie", formattedCookie);
             }
             
             // 设置超时时间，避免长时间等待
@@ -487,7 +474,7 @@ namespace AvaRoomAssign.Models
                 const string url = "https://ent.qpgzf.cn/RoomAssign/SelectRoom";
                 var data = new Dictionary<string, string>
                 {
-                    ["ApplyIDs"] = applyerId,
+                    ["ApplyIDs"] = "c1317b48-d7dc-4fdb-99c1-b03000f6dcb9", // 必须要是有公租房抢房资格才行
                     ["IsApplyTalent"] = _isApplyTalent,
                     ["type"] = "1",
                     ["SearchEntity._PageSize"] = "300",
