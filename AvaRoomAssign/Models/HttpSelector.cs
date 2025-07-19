@@ -829,8 +829,8 @@ namespace AvaRoomAssign.Models
             var data = new Dictionary<string, string> { ["ApplyIDs"] = applyerId, ["roomID"] = roomId };
             var response = await client.PostAsync(url, new FormUrlEncodedContent(data), _cancellationToken);
             var result = await response.Content.ReadAsStringAsync(_cancellationToken);
-            LogManager.Info(result);
-            return result.Contains("成功");
+            LogManager.Info($"发包结果：{result}");
+            return result.Contains("OK");
         }
 
         /// <summary>

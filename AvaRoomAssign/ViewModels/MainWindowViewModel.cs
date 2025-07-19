@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -237,12 +238,48 @@ public partial class MainWindowViewModel : ViewModelBase
             await SaveConfigurationAsync();
         };
 
-        // 监听集合变化
+        // 监听集合变化（添加/删除项目）
         CommunityConditions.CollectionChanged += async (sender, e) =>
         {
             if (_isLoadingConfig) return;
+            
+            // 处理新增项目，为其添加属性变化监听
+            if (e.NewItems != null)
+            {
+                foreach (HouseCondition item in e.NewItems)
+                {
+                    item.PropertyChanged += OnCommunityConditionPropertyChanged;
+                }
+            }
+            
+            // 处理移除项目，移除其属性变化监听
+            if (e.OldItems != null)
+            {
+                foreach (HouseCondition item in e.OldItems)
+                {
+                    item.PropertyChanged -= OnCommunityConditionPropertyChanged;
+                }
+            }
+            
             await SaveConfigurationAsync();
         };
+        
+        // 为现有的社区条件项目添加属性变化监听
+        foreach (var condition in CommunityConditions)
+        {
+            condition.PropertyChanged += OnCommunityConditionPropertyChanged;
+        }
+    }
+    
+    /// <summary>
+    /// 社区条件属性变化事件处理
+    /// </summary>
+    private async void OnCommunityConditionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_isLoadingConfig) return;
+        
+        // 当社区条件的任何属性发生变化时，自动保存配置
+        await SaveConfigurationAsync();
     }
 
     [RelayCommand]
