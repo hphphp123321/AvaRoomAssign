@@ -328,4 +328,19 @@ public class EnumDisplayItem<T> where T : struct, Enum
 {
     public T Value { get; set; }
     public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 扩展方法帮助类
+/// </summary>
+public static class Extensions
+{
+    /// <summary>
+    /// 为对象提供链式调用支持
+    /// </summary>
+    public static T Apply<T>(this T obj, Action<T> action)
+    {
+        action(obj);
+        return obj;
+    }
 } 

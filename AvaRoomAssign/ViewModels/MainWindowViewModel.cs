@@ -26,14 +26,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty] private int _selectedBrowserType = 1; // 默认选择Edge
 
-    [ObservableProperty] private string _userAccount = "91310118832628001D";
+    [ObservableProperty] private string _userAccount = string.Empty;
 
     [ObservableProperty] private string _userPassword = string.Empty;
 
     [ObservableProperty]
-    private string _cookie = "SYS_USER_COOKIE_KEY=DuAZwOAf/NLjgFDzEGln40YCqW1fow8gYHTd64HiogeCyqK3B2HgXg==";
+    private string _cookie = string.Empty;
 
-    [ObservableProperty] private string _applierName = "高少炜";
+    [ObservableProperty] private string _applierName = string.Empty;
 
     [ObservableProperty] private DateTime _startDate = DateTime.Today.AddDays(1);
 
@@ -324,6 +324,39 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
+            // 验证配置
+            var config = new AppConfig
+            {
+                SelectedOperationMode = SelectedOperationMode,
+                SelectedBrowserType = SelectedBrowserType,
+                UserAccount = UserAccount,
+                UserPassword = UserPassword,
+                Cookie = Cookie,
+                ApplierName = ApplierName,
+                StartHour = StartHour,
+                StartMinute = StartMinute,
+                StartSecond = StartSecond,
+                ClickInterval = ClickInterval,
+                AutoConfirm = AutoConfirm,
+                CommunityConditions = CommunityConditions.Select(HouseConditionData.FromHouseCondition).ToList(),
+                ManualRoomIds = ManualRoomIds,
+                UseManualRoomIds = UseManualRoomIds
+            };
+
+            var validationResult = ConfigValidator.ValidateConfig(config);
+            if (!validationResult.IsValid)
+            {
+                LogManager.Error("配置验证失败:");
+                LogManager.Info(validationResult.GetFormattedMessages());
+                return;
+            }
+
+            if (validationResult.Warnings.Count > 0)
+            {
+                LogManager.Warning("配置检查发现以下警告:");
+                LogManager.Info(validationResult.GetFormattedMessages());
+            }
+
             var operationMode = SelectedOperationMode == 0 ? OperationMode.Click : OperationMode.Http;
             var driverType = SelectedBrowserType == 0 ? DriverType.Chrome : DriverType.Edge;
             var startTime = $"{StartDate:yyyy-MM-dd} {StartHour}:{StartMinute}:{StartSecond}";
@@ -356,6 +389,11 @@ public partial class MainWindowViewModel : ViewModelBase
                         case OperationMode.Click:
                             LogManager.Info("正在启动浏览器...");
                             var driver = GetDriver(driverType);
+                            if (driver == null)
+                            {
+                                LogManager.Error("浏览器启动失败，流程终止");
+                                return;
+                            }
 
                             _currentSelector = new DriverSelector(
                                 driver: driver,
@@ -573,6 +611,11 @@ public partial class MainWindowViewModel : ViewModelBase
                 LogManager.Info("正在启动浏览器...");
                 var driverType = SelectedBrowserType == 0 ? DriverType.Chrome : DriverType.Edge;
                 var driver = GetDriver(driverType);
+                if (driver == null)
+                {
+                    LogManager.Error("无法启动浏览器，Cookie获取失败");
+                    return;
+                }
                 
                 try
                 {
@@ -822,47 +865,63 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private readonly System.Text.StringBuilder _logBuffer = new(8192);
+    private readonly object _logLock = new object();
+    private int _logLineCount = 0;
+    private const int MaxLogLines = 50;
+    private const int KeepLogLines = 45;
+
     private void AppendLog(string text)
     {
-        // 确保在UI线程上执行
-        Dispatcher.UIThread.Post(() =>
+        lock (_logLock)
         {
-            // 限制日志行数，保持性能
-            var lines = LogText.Split('\n');
-            if (lines.Length > 50)
+            // 确保在UI线程上执行
+            Dispatcher.UIThread.Post(() =>
             {
-                var newLines = new string[45];
-                Array.Copy(lines, lines.Length - 45, newLines, 0, 45);
-                LogText = string.Join('\n', newLines);
-            }
+                // 使用StringBuilder提高性能
+                _logBuffer.Append(text);
+                _logLineCount++;
 
-            LogText += text;
-            OnPropertyChanged(nameof(LogText));
+                // 当行数超过限制时，清理旧日志
+                if (_logLineCount > MaxLogLines)
+                {
+                    var allText = _logBuffer.ToString();
+                    var lines = allText.Split('\n');
+                    
+                    if (lines.Length > KeepLogLines)
+                    {
+                        _logBuffer.Clear();
+                        var linesToKeep = lines.Skip(lines.Length - KeepLogLines);
+                        _logBuffer.AppendJoin('\n', linesToKeep);
+                        _logLineCount = KeepLogLines;
+                    }
+                }
 
-            // 触发日志更新事件，通知UI滚动到底部
-            LogUpdated?.Invoke(this, EventArgs.Empty);
-        });
+                LogText = _logBuffer.ToString();
+                OnPropertyChanged(nameof(LogText));
+
+                // 触发日志更新事件，通知UI滚动到底部
+                LogUpdated?.Invoke(this, EventArgs.Empty);
+            });
+        }
     }
 
-    private IWebDriver GetDriver(DriverType driverType)
+    private IWebDriver? GetDriver(DriverType driverType)
     {
-        IWebDriver driver = null!;
-
-        switch (driverType)
+        try
         {
-            case DriverType.Chrome:
-                var chromeOptions = new ChromeOptions();
-                driver = new ChromeDriver(chromeOptions);
-                break;
-            case DriverType.Edge:
-                var edgeOptions = new EdgeOptions();
-                edgeOptions.AddArgument("--edge-skip-compat-layer-relaunch");
-                driver = new EdgeDriver(edgeOptions);
-                break;
-            default:
-                break;
+            return driverType switch
+            {
+                DriverType.Chrome => new ChromeDriver(new ChromeOptions()),
+                DriverType.Edge => new EdgeDriver(new EdgeOptions().Apply(opt => 
+                    opt.AddArgument("--edge-skip-compat-layer-relaunch"))),
+                _ => throw new ArgumentOutOfRangeException(nameof(driverType), $"不支持的浏览器类型: {driverType}")
+            };
         }
-
-        return driver;
+        catch (Exception ex)
+        {
+            LogManager.Error($"创建WebDriver失败: {ex.Message}", ex);
+            return null;
+        }
     }
 }

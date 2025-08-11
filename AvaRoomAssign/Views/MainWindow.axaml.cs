@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -13,6 +14,7 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace AvaRoomAssign.Views;
 
@@ -38,6 +40,9 @@ public partial class MainWindow : Window
     private Avalonia.Point _initialMousePosition; // 开始拖拽时的鼠标位置
     
     private AppConfig? _cachedConfig = null; // 缓存的配置对象
+    
+    // 实时时钟定时器
+    private Timer? _clockTimer;
     
     public MainWindow()
     {
@@ -71,6 +76,9 @@ public partial class MainWindow : Window
         
         // 窗口加载完成后初始化
         this.Loaded += OnWindowLoaded;
+        
+        // 启用页面加载动画
+        this.Opacity = 0;
         
         // 窗口关闭时清理事件订阅
         this.Closing += OnWindowClosing;
@@ -386,13 +394,19 @@ public partial class MainWindow : Window
     /// <summary>
     /// 窗口加载完成事件
     /// </summary>
-    private void OnWindowLoaded(object? sender, RoutedEventArgs e)
+    private async void OnWindowLoaded(object? sender, RoutedEventArgs e)
     {
         // 设置拖拽功能
         SetupResizeHandle();
         
         // 初始化响应式布局
         UpdateResponsiveLayout();
+        
+        // 播放加载动画
+        await PlayLoadingAnimation();
+        
+        // 启动实时时钟
+        StartClock();
     }
     
     /// <summary>
@@ -411,6 +425,9 @@ public partial class MainWindow : Window
             
             // 清理日志管理器资源
             LogManager.Cleanup();
+            
+            // 停止时钟定时器
+            _clockTimer?.Dispose();
         }
         catch (Exception ex)
         {
@@ -508,6 +525,12 @@ public partial class MainWindow : Window
         {
             if (DataContext is MainWindowViewModel viewModel)
             {
+                // 更新按钮状态动画
+                UpdateButtonAnimations(viewModel.IsRunning);
+                
+                // 更新状态指示器
+                UpdateRunningStatusIndicator(viewModel.IsRunning);
+                
                 if (viewModel.IsRunning && !_isLogExpanded)
                 {
                     ExpandLogAreaToTop();
@@ -516,6 +539,16 @@ public partial class MainWindow : Window
                 {
                     CollapseLogAreaToBottom();
                 }
+            }
+        }
+        else if (e.PropertyName == nameof(MainWindowViewModel.IsFetchingRoomIds))
+        {
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                UpdateFetchButtonAnimation(viewModel.IsFetchingRoomIds);
+                
+                // 更新状态指示器
+                UpdateRunningStatusIndicator(false, viewModel.IsFetchingRoomIds);
             }
         }
     }
@@ -1131,6 +1164,210 @@ public partial class MainWindow : Window
                     singleIcon.Text = doubleIcon.Text;
                 }
             }
+        }
+    }
+    
+    /// <summary>
+    /// 播放页面加载动画
+    /// </summary>
+    private async Task PlayLoadingAnimation()
+    {
+        try
+        {
+            // 淡入主窗口
+            var fadeInAnimation = new Avalonia.Animation.Animation
+            {
+                Duration = TimeSpan.FromMilliseconds(600),
+                Children =
+                {
+                    new KeyFrame
+                    {
+                        Cue = new Cue(0d),
+                        Setters = { new Setter(OpacityProperty, 0d) }
+                    },
+                    new KeyFrame
+                    {
+                        Cue = new Cue(1d),
+                        Setters = { new Setter(OpacityProperty, 1d) }
+                    }
+                }
+            };
+            
+            await fadeInAnimation.RunAsync(this);
+            
+            // 依次显示工具栏按钮
+            await AnimateToolbarButtons();
+            
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"加载动画播放失败: {ex.Message}");
+            // 确保即使动画失败也能正常显示
+            this.Opacity = 1;
+        }
+    }
+    
+    /// <summary>
+    /// 工具栏按钮动画
+    /// </summary>
+    private async Task AnimateToolbarButtons()
+    {
+        var toolbarPanel = this.FindControl<StackPanel>("ToolbarPanel");
+        if (toolbarPanel?.Children != null)
+        {
+            foreach (var child in toolbarPanel.Children.OfType<Button>())
+            {
+                child.Opacity = 0;
+                child.RenderTransform = new TranslateTransform(0, -20);
+                
+                var buttonAnimation = new Avalonia.Animation.Animation
+                {
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    Children =
+                    {
+                        new KeyFrame
+                        {
+                            Cue = new Cue(0d),
+                            Setters = 
+                            { 
+                                new Setter(OpacityProperty, 0d),
+                                new Setter(RenderTransformProperty, new TranslateTransform(0, -20))
+                            }
+                        },
+                        new KeyFrame
+                        {
+                            Cue = new Cue(1d),
+                            Setters = 
+                            { 
+                                new Setter(OpacityProperty, 1d),
+                                new Setter(RenderTransformProperty, new TranslateTransform(0, 0))
+                            }
+                        }
+                    }
+                };
+                
+                _ = buttonAnimation.RunAsync(child); // 不等待，让按钮依次出现
+                await Task.Delay(100); // 100ms 间隔
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 更新按钮动画状态
+    /// </summary>
+    private void UpdateButtonAnimations(bool isRunning)
+    {
+        var startButton = this.FindControl<Button>("StartButton");
+        if (startButton != null)
+        {
+            if (isRunning)
+            {
+                // 开始按钮禁用时的脉冲效果已在XAML中定义
+                startButton.Content = "⚡ 运行中...";
+            }
+            else
+            {
+                startButton.Content = "🚀 开始抢房";
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 更新获取房间ID按钮动画
+    /// </summary>
+    private void UpdateFetchButtonAnimation(bool isFetching)
+    {
+        var fetchButton = this.FindControl<Button>("FetchRoomIdsButton");
+        if (fetchButton != null)
+        {
+            if (isFetching)
+            {
+                // 旋转动画已在XAML中定义
+                fetchButton.Content = "⏳ 获取中...";
+            }
+            else
+            {
+                fetchButton.Content = "🔍 获取房间ID";
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 启动实时时钟
+    /// </summary>
+    private void StartClock()
+    {
+        UpdateClock(); // 立即更新一次
+        
+        _clockTimer = new Timer((_) =>
+        {
+            Dispatcher.UIThread.Post(UpdateClock);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+    
+    /// <summary>
+    /// 更新时钟显示
+    /// </summary>
+    private void UpdateClock()
+    {
+        try
+        {
+            var currentTimeText = this.FindControl<TextBlock>("CurrentTimeText");
+            if (currentTimeText != null)
+            {
+                currentTimeText.Text = DateTime.Now.ToString("HH:mm:ss");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"更新时钟失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 更新运行状态指示器
+    /// </summary>
+    private void UpdateRunningStatusIndicator(bool isRunning, bool isFetching = false)
+    {
+        try
+        {
+            var statusIndicator = this.FindControl<Ellipse>("StatusIndicator");
+            var statusText = this.FindControl<TextBlock>("StatusText");
+            var statusBorder = this.FindControl<Border>("RunningStatusBorder");
+            
+            if (statusIndicator != null && statusText != null && statusBorder != null)
+            {
+                if (isRunning)
+                {
+                    // 运行中状态 - 绿色脉冲
+                    statusIndicator.Fill = new SolidColorBrush(Color.Parse("#48BB78"));
+                    statusText.Text = "运行中";
+                    statusText.Foreground = new SolidColorBrush(Color.Parse("#48BB78"));
+                    
+                    // 简单的颜色变化，不使用复杂动画
+                }
+                else if (isFetching)
+                {
+                    // 获取中状态 - 橙色
+                    statusIndicator.Fill = new SolidColorBrush(Color.Parse("#ED8936"));
+                    statusText.Text = "获取中";
+                    statusText.Foreground = new SolidColorBrush(Color.Parse("#ED8936"));
+                }
+                else
+                {
+                    // 准备就绪状态 - 灰色
+                    statusIndicator.Fill = this.Resources["ThemeTextSecondary"] as IBrush;
+                    statusText.Text = "准备就绪";
+                    statusText.Foreground = this.Resources["ThemeTextSecondary"] as IBrush;
+                    
+                    // 停止动画
+                    statusIndicator.Opacity = 1;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"更新状态指示器失败: {ex.Message}");
         }
     }
 

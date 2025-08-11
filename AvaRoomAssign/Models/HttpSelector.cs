@@ -8,7 +8,7 @@ using HtmlAgilityPack;
 
 namespace AvaRoomAssign.Models
 {
-    public class HttpSelector : ISelector
+    public class HttpSelector : ISelector, IDisposable
     {
         private readonly string _applierName;
         private readonly List<HouseCondition> _conditions;
@@ -21,6 +21,8 @@ namespace AvaRoomAssign.Models
         private const int RetryDelayMs = 200; // 重试间隔（毫秒）
 
         private string _isApplyTalent = "1"; // 是否是人才公寓，1是，0不是
+        private HttpClient? _httpClient;
+        private bool _disposed = false;
 
         public HttpSelector(
             string applierName,
@@ -43,156 +45,23 @@ namespace AvaRoomAssign.Models
         /// <summary>
         /// 通用重试机制，用于处理网络波动
         /// </summary>
-        /// <typeparam name="T">返回值类型</typeparam>
-        /// <param name="operation">要执行的异步操作</param>
-        /// <param name="operationName">操作名称，用于日志输出</param>
-        /// <param name="maxAttempts">最大重试次数</param>
-        /// <returns>操作结果</returns>
         private async Task<T?> ExecuteWithRetryAsync<T>(
             Func<Task<T?>> operation, 
             string operationName, 
             int maxAttempts = MaxRetryAttempts) where T : class
         {
-            Exception? lastException = null;
-            
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    if (_cancellationToken.IsCancellationRequested)
-                        return null;
-
-                    var result = await operation();
-                    if (result != null)
-                    {
-                        if (attempt > 1)
-                        {
-                            LogManager.Success($"{operationName} 在第 {attempt} 次尝试后成功");
-                        }
-                        return result;
-                    }
-                    
-                    // 结果为空但没有异常，代表请求失败，继续重试
-                    if (attempt == maxAttempts)
-                    {
-                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后仍无结果");
-                    }
-                    else
-                    {
-                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败，{RetryDelayMs}ms后重试...");
-                        try
-                        {
-                            await Task.Delay(RetryDelayMs, _cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            LogManager.Warning("重试等待被取消，流程终止");
-                            return null;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastException = ex;
-                    
-                    if (attempt < maxAttempts)
-                    {
-                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
-                        try
-                        {
-                            await Task.Delay(RetryDelayMs, _cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            LogManager.Warning("重试等待被取消，流程终止");
-                            return null;
-                        }
-                    }
-                    else
-                    {
-                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
-                    }
-                }
-            }
-            
-            return null;
+            return await RetryPolicy.ExecuteAsync(operation, operationName, maxAttempts, RetryDelayMs, _cancellationToken);
         }
 
         /// <summary>
         /// 布尔值类型的重试机制
         /// </summary>
-        /// <param name="operation">要执行的异步操作</param>
-        /// <param name="operationName">操作名称，用于日志输出</param>
-        /// <param name="maxAttempts">最大重试次数</param>
-        /// <returns>操作结果</returns>
         private async Task<bool> ExecuteWithRetryAsync(
             Func<Task<bool>> operation, 
             string operationName, 
             int maxAttempts = MaxRetryAttempts)
         {
-            Exception? lastException = null;
-            
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    if (_cancellationToken.IsCancellationRequested)
-                        return false;
-
-                    var result = await operation();
-                    if (result)
-                    {
-                        if (attempt > 1)
-                        {
-                            LogManager.Success($"{operationName} 在第 {attempt} 次尝试后成功");
-                        }
-                        return true;
-                    }
-                    
-                    // 结果为false，继续重试
-                    if (attempt < maxAttempts)
-                    {
-                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试返回false，{RetryDelayMs}ms后重试...");
-                        try
-                        {
-                            await Task.Delay(RetryDelayMs, _cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            LogManager.Warning("重试等待被取消，流程终止");
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后仍返回false");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastException = ex;
-                    
-                    if (attempt < maxAttempts)
-                    {
-                        LogManager.Warning($"{operationName} 第 {attempt} 次尝试失败: {ex.Message}，{RetryDelayMs}ms后重试...");
-                        try
-                        {
-                            await Task.Delay(RetryDelayMs, _cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            LogManager.Warning("重试等待被取消，流程终止");
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        LogManager.Error($"{operationName} 在 {maxAttempts} 次尝试后最终失败: {ex.Message}");
-                    }
-                }
-            }
-            
-            return false;
+            return await RetryPolicy.ExecuteBoolAsync(operation, operationName, maxAttempts, RetryDelayMs, _cancellationToken);
         }
 
         public async Task RunAsync()
@@ -205,7 +74,7 @@ namespace AvaRoomAssign.Models
             
             try
             {
-                using var client = CreateHttpClient(_cookie);
+                var client = GetOrCreateHttpClient();
 
                 var applierId = await GetApplierIdAsync(client);
                 if (applierId == null)
@@ -292,24 +161,42 @@ namespace AvaRoomAssign.Models
             // 用于取消运行中的 Task
         }
 
-        private HttpClient CreateHttpClient(string cookie)
+        private HttpClient GetOrCreateHttpClient()
         {
-            var client = new HttpClient();
+            if (_httpClient != null)
+                return _httpClient;
+
+            _httpClient = new HttpClient();
             
             // 确保Cookie格式正确
-            var formattedCookie = cookie;
+            var formattedCookie = _cookie;
             if (!formattedCookie.StartsWith("SYS_USER_COOKIE_KEY=SYS_USER_COOKIE_KEY="))
             {
-                client.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={formattedCookie}");
+                _httpClient.DefaultRequestHeaders.Add("Cookie", $"SYS_USER_COOKIE_KEY={formattedCookie}");
             }
             else
             {
-                client.DefaultRequestHeaders.Add("Cookie", formattedCookie);
+                _httpClient.DefaultRequestHeaders.Add("Cookie", formattedCookie);
             }
             
             // 设置超时时间，避免长时间等待
-            client.Timeout = TimeSpan.FromSeconds(30);
-            return client;
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
+            return _httpClient;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _httpClient?.Dispose();
+                _disposed = true;
+            }
         }
 
         private async Task<string?> GetApplierIdAsync(HttpClient client)
@@ -474,7 +361,7 @@ namespace AvaRoomAssign.Models
                 const string url = "https://ent.qpgzf.cn/RoomAssign/SelectRoom";
                 var data = new Dictionary<string, string>
                 {
-                    ["ApplyIDs"] = "c1317b48-d7dc-4fdb-99c1-b03000f6dcb9", // 必须要是有公租房抢房资格才行
+                    ["ApplyIDs"] = "c1317b48-d7dc-4fdb-99c1-b03000f6dcb9", // 必须要是有公租房抢房资格才行，因此固定为这个id
                     ["IsApplyTalent"] = _isApplyTalent,
                     ["type"] = "1",
                     ["SearchEntity._PageSize"] = "300",
@@ -552,7 +439,7 @@ namespace AvaRoomAssign.Models
             
             try
             {
-                using var client = CreateHttpClient(_cookie);
+                var client = GetOrCreateHttpClient();
 
                 var applierId = await GetApplierIdAsync(client);
                 if (applierId == null)
@@ -592,7 +479,7 @@ namespace AvaRoomAssign.Models
         {
             try
             {
-                using var client = CreateHttpClient(_cookie);
+                var client = GetOrCreateHttpClient();
 
                 var applierId = await GetApplierIdAsync(client);
                 if (applierId == null)
@@ -703,7 +590,7 @@ namespace AvaRoomAssign.Models
 
             try
             {
-                using var client = CreateHttpClient(_cookie);
+                var client = GetOrCreateHttpClient();
 
                 var applierId = await GetApplierIdAsync(client);
                 if (applierId == null)
@@ -854,7 +741,7 @@ namespace AvaRoomAssign.Models
                 if (!string.IsNullOrWhiteSpace(cookie))
                 {
                     LogManager.Info("Cookie格式化：添加SYS_USER_COOKIE_KEY前缀");
-                    return true; // 在CreateHttpClient中会正确格式化
+                    return true; // 在GetOrCreateHttpClient中会正确格式化
                 }
                 else
                 {

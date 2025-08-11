@@ -676,7 +676,8 @@
                 <StackPanel Grid.Column="1" 
                             Orientation="Horizontal" 
                             Spacing="12" 
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            x:Name="ToolbarPanel">
                     
                     <!-- 配置文件夹按钮 -->
                     <Button Classes="config-folder-icon"
@@ -1856,13 +1857,49 @@
                 </Border>
                 
                 <!-- 标题区域 -->
-                <StackPanel Grid.Row="1" 
-                            Orientation="Horizontal" 
-                            Spacing="16" 
-                            Margin="0,8,0,16">
-                    <TextBlock Text="📋" FontSize="20" VerticalAlignment="Center"/>
-                    <TextBlock Classes="modern-title" Text="日志输出" FontSize="22"/>
-                </StackPanel>
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,16">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
+                        <TextBlock Text="📋" FontSize="20" VerticalAlignment="Center"/>
+                        <TextBlock Classes="modern-title" Text="日志输出" FontSize="22"/>
+                    </StackPanel>
+                    
+                    <!-- 状态指示器 -->
+                    <StackPanel Grid.Column="2" 
+                               Orientation="Horizontal" 
+                               Spacing="12" 
+                               VerticalAlignment="Center"
+                               x:Name="StatusIndicatorPanel">
+                        
+                        <!-- 运行状态指示灯 -->
+                        <Border CornerRadius="8" 
+                               Padding="8,4" 
+                               Background="{DynamicResource ThemeTableAlternating}"
+                               x:Name="RunningStatusBorder">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="8" Height="8" 
+                                        Fill="{DynamicResource ThemeTextSecondary}" 
+                                        x:Name="StatusIndicator">
+                                    <!-- 默认静态状态 -->
+                                </Ellipse>
+                                <TextBlock Text="准备就绪" 
+                                          FontSize="11" 
+                                          Foreground="{DynamicResource ThemeTextSecondary}"
+                                          x:Name="StatusText"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- 实时时间显示 -->
+                        <Border CornerRadius="8" 
+                               Padding="8,4" 
+                               Background="{DynamicResource ThemeAccent}">
+                            <TextBlock Text="00:00:00" 
+                                      FontSize="11" 
+                                      Foreground="White"
+                                      FontFamily="Consolas, monospace"
+                                      x:Name="CurrentTimeText"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
                 
                 <!-- 日志内容区域 -->
                 <ScrollViewer Grid.Row="2" 
@@ -1904,7 +1941,8 @@
                         Command="{Binding StartProcessCommand}"
                         IsEnabled="{Binding !IsRunning}"
                         Margin="0,0,8,0"
-                        FontSize="15"/>
+                        FontSize="15"
+                        x:Name="StartButton"/>
                 
                 <Button Grid.Column="1"
                         Classes="modern-secondary" 
@@ -1920,7 +1958,8 @@
                         Command="{Binding FetchRoomIdsCommand}"
                         Margin="8,0,0,0"
                         FontSize="15"
-                        ToolTip.Tip="提前获取所有符合条件的房间ID，加速抢房">
+                        ToolTip.Tip="提前获取所有符合条件的房间ID，加速抢房"
+                        x:Name="FetchRoomIdsButton">
                     <Button.IsVisible>
                         <Binding Path="SelectedOperationMode" Converter="{StaticResource IntToBoolConverter}" ConverterParameter="1"/>
                     </Button.IsVisible>
